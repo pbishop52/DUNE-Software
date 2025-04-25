@@ -4,7 +4,33 @@ import numpy as np
 import pyvisa
 from time import sleep
 from robust_serial import Order, read_order, write_i8, write_i16, write_order
-from utils import open_serial_port, setRelay  # Import setRelay function
+from robust_serial.utils import open_serial_port, setRelay  # Import setRelay function
+
+import string
+
+TARGET_RESISTANCE = 5000e6  # 5000 Megaohms in ohms
+BIN_PERCENT_STEP = 0.002  # 0.2%
+BIN_RANGE = 0.01  # +/- 1.0%
+'''
+# Generate bin thresholds and labels
+BIN_LABELS = list(string.ascii_uppercase)
+bin_edges = [TARGET_RESISTANCE * (1 + i * BIN_PERCENT_STEP) for i in range(-5, 6)]  # from -1% to +1%
+
+def bin_resistance(value):
+    diffs = [abs(value - edge) for edge in bin_edges]
+    idx = int(np.argmin(diffs))
+    return BIN_LABELS[idx]
+'''
+
+BIN_LABELS = list(string.ascii_uppercase)
+range_steps = int(BIN_RANGE / BIN_PERCENT_STEP)
+bin_edges = [TARGET_RESISTANCE * (1 + i * BIN_PERCENT_STEP) for i in range(-range_steps, range_steps + 1)]
+
+def bin_resistance(value):
+    diffs = [abs(value - edge) for edge in bin_edges]
+    idx = int(np.argmin(diffs))
+    return BIN_LABELS[idx]
+
 
 class TestingProcess():
     def __init__(self, arduino_port, dmm_port):
@@ -13,6 +39,7 @@ class TestingProcess():
         """
         self.arduino_port = arduino_port
         self.dmm_port = dmm_port
+        self.final_resistances = {}
 
         # Initialize Arduino connection
         try:
@@ -45,7 +72,7 @@ class TestingProcess():
             print(f"Connected to DMM on {dmm_port}")
         except Exception as e:
             raise RuntimeError(f"Failed to connect to DMM on {dmm_port}: {e}")
-
+    
     def read_DMM(self):
         """
         Reads voltage from the Siglent SDM3055 digital multimeter via USB.
@@ -77,72 +104,89 @@ class TestingProcess():
         else:
             return None, None
 
-def standardTest(self, hvLimit=2000, samplesPerStage=10, voltageStages=19, 
-                 voltagePerIndex=7.843, lowVoltage=100, numRelays=8):
-    """
-    Conducts the testing process through multiple voltage steps and relay switches.
-    """
-    # Generate high voltage steps
-    indexLimit = int(hvLimit // voltagePerIndex)
-    lowIndex = int(lowVoltage // voltagePerIndex)
-    stages_index = range(lowIndex, indexLimit, int((indexLimit - lowIndex) // samplesPerStage))
+    def standardTest(self, hvLimit=2000, samplesPerStage=10, voltageStages=19, 
+                    voltagePerIndex=7.843, lowVoltage=100, numRelays=8):
+        """
+        Conducts the testing process through multiple voltage steps and relay switches.
+        """
+        # Generate high voltage steps
+        indexLimit = int(hvLimit // voltagePerIndex)
+        lowIndex = int(lowVoltage // voltagePerIndex)
+        stages_index = range(lowIndex, indexLimit, int((indexLimit - lowIndex) // samplesPerStage))
+        relay_resistances = {relay: [] for relay in range(numRelays)}
 
-    # Prepare CSV file to save results
-    with open(self.file_path, "w", newline="") as csvfile:
-        csv_writer = csv.writer(csvfile)
-        csv_writer.writerow(["Voltage Step", "Relay", "Avg Voltage (V)", "Standard Error", "Resistance (MΩ)"])
 
-        # Iterate through voltage steps
-        for voltageStage in stages_index:
-            print(f"Setting high voltage to stage {voltageStage}")
+        # Prepare CSV file to save results
+        with open(self.file_path, "w", newline="") as csvfile:
+            csv_writer = csv.writer(csvfile)
+            csv_writer.writerow(["Voltage Step", "Relay", "Avg Voltage (V)", "Standard Error", "Resistance (MΩ)","Bin Label"])
 
-            # Wait for user to manually set the high voltage
-            user_confirmed = QMessageBox.question(
-                self, "Manual High Voltage Adjustment", 
-                f"Please set the high voltage to {voltageStage * voltagePerIndex:.2f} V and click OK.",
-                QMessageBox.Ok | QMessageBox.Cancel
-            )
+            # Iterate through voltage steps
+            for voltageStage in stages_index:
+                print(f"Setting high voltage to stage {voltageStage}")
 
-            if user_confirmed == QMessageBox.Cancel:
-                print("Test aborted by user.")
-                break  # Exit test if the user cancels
+                # Wait for user to manually set the high voltage
+                user_confirmed = QMessageBox.question(
+                    self, "Manual High Voltage Adjustment", 
+                    f"Please set the high voltage to {voltageStage * voltagePerIndex:.2f} V and click OK.",
+                    QMessageBox.Ok | QMessageBox.Cancel
+                )
 
-            write_order(self.serial_file, Order.HV_UPDATED)  # Order 12
+                if user_confirmed == QMessageBox.Cancel:
+                    print("Test aborted by user.")
+                    break  # Exit test if the user cancels
 
-            # Confirm high voltage update from Arduino
-            while read_order(self.serial_file) != Order.HV_UPDATED:
-                time.sleep(0.1)
+                write_order(self.serial_file, Order.HV_UPDATED)  # Order 12
 
-            # Iterate through all relays
-            for relay in range(numRelays):
-                print(f"Closing relay {relay}")
-                setRelay(self.serial_file, relay)  # Close relay
-                write_order(self.serial_file, Order.READY_RELAY)  # Order 8
-
-                # Confirm relay is ready
-                while read_order(self.serial_file) != Order.READY_RELAY:
+                # Confirm high voltage update from Arduino
+                while read_order(self.serial_file) != Order.HV_UPDATED:
                     time.sleep(0.1)
 
-                # Read voltage data from DMM
-                avg_voltage, std_err = self.communicate_with_DMM()
-                if avg_voltage is not None:
-                    print(f"Relay {relay}: Avg Voltage = {avg_voltage:.3f} V, Std Err = {std_err:.3f} V")
+                # Iterate through all relays
+                for relay in range(numRelays):
+                    print(f"Closing relay {relay}")
+                    setRelay(self.serial_file, relay)  # Close relay
+                    write_order(self.serial_file, Order.READY_RELAY)  # Order 8
 
-                    # Send data update order to Arduino
-                    write_order(self.serial_file, Order.DATA_UPDATE)  # Order 11
+                    # Confirm relay is ready
+                    while read_order(self.serial_file) != Order.READY_RELAY:
+                        time.sleep(0.1)
 
-                    # Save data to CSV
-                    current = avg_voltage / 1.47e6  # Calculate current based on resistance of 1.47 MΩ
-                    resistance = (voltageStage * voltagePerIndex - avg_voltage) / current / 1e6  # Resistance in MΩ
-                    csv_writer.writerow([voltageStage, relay, avg_voltage, std_err, resistance])
-                else:
-                    print(f"Relay {relay}: Failed to read from DMM.")
+                    # Read voltage data from DMM
+                    avg_voltage, std_err = self.communicate_with_DMM()
+                    if avg_voltage is not None:
+                        print(f"Relay {relay}: Avg Voltage = {avg_voltage:.3f} V, Std Err = {std_err:.3f} V")
 
-        print("Testing complete. Turning off high voltage.")
-        write_order(self.serial_file, Order.HV_UPDATED)  # Order to turn off HV
+                        # Send data update order to Arduino
+                        write_order(self.serial_file, Order.DATA_UPDATE)  # Order 11
 
-    print("Data saved to test_results.csv")
+                        # Save data to CSV
+                        current = avg_voltage / 1.47e6  # Calculate current based on resistance of 1.47 MΩ
+                        resistance = (voltageStage * voltagePerIndex - avg_voltage) / current / 1e6  # Resistance in MΩ
+                        relay_resistances[relay].append(resistance * 1e6)  # store in ohms for binning later
+                        bin_label = bin_resistance(resistance * 1e6)
+                        csv_writer.writerow([voltageStage, relay, avg_voltage, std_err, resistance,bin_label])
+                    else:
+                        print(f"Relay {relay}: Failed to read from DMM.")
 
+
+            self.final_resistances = {}  # reset for this run
+            for relay, resistances in relay_resistances.items():
+                if resistances:
+                    avg_res = np.mean(resistances)
+                    bin_label = bin_resistance(avg_res)
+                    self.final_resistances[relay] = {
+                        "avg_resistance": avg_res,
+                        "bin_label": bin_label
+                    }
+
+            print("Testing complete. Turning off high voltage.")
+            write_order(self.serial_file, Order.HV_UPDATED)  # Order to turn off HV
+
+        print("Data saved to test_results.csv")
+    def get_final_resistances(self):
+        
+        return self.final_resistances     
 
 
 """

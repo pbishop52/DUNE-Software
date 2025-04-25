@@ -8,23 +8,21 @@ from robust_serial.utils import open_serial_port, setRelay  # Import setRelay fu
 
 import string
 
-TARGET_RESISTANCE = 5000e6  # 5000 Megaohms in ohms
-BIN_PERCENT_STEP = 0.002  # 0.2%
-BIN_RANGE = 0.01  # +/- 1.0%
-'''
-# Generate bin thresholds and labels
+TARGET_RESISTANCE = 5000e6  # 5000 MΩ
+BIN_PERCENT_STEP = 0.002    # 0.2%
+BIN_RANGE = 0.01            # ±1.0%
 BIN_LABELS = list(string.ascii_uppercase)
-bin_edges = [TARGET_RESISTANCE * (1 + i * BIN_PERCENT_STEP) for i in range(-5, 6)]  # from -1% to +1%
 
-def bin_resistance(value):
-    diffs = [abs(value - edge) for edge in bin_edges]
-    idx = int(np.argmin(diffs))
-    return BIN_LABELS[idx]
-'''
-
-BIN_LABELS = list(string.ascii_uppercase)
+# Step 1: Define range and calculate edges
 range_steps = int(BIN_RANGE / BIN_PERCENT_STEP)
-bin_edges = [TARGET_RESISTANCE * (1 + i * BIN_PERCENT_STEP) for i in range(-range_steps, range_steps + 1)]
+edges = [TARGET_RESISTANCE * (1 + i * BIN_PERCENT_STEP) for i in range(-range_steps, range_steps + 1)]
+
+# Step 2: Sort edges by distance to center (TARGET_RESISTANCE)
+sorted_edges = sorted(edges, key=lambda x: abs(x - TARGET_RESISTANCE))
+
+# Step 3: Map sorted edges to bin labels
+bin_edges = sorted_edges
+label_map = {edge: BIN_LABELS[i] for i, edge in enumerate(bin_edges)}
 
 def bin_resistance(value):
     diffs = [abs(value - edge) for edge in bin_edges]

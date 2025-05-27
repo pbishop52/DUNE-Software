@@ -5,7 +5,10 @@ import pyvisa
 from time import sleep
 from robust_serial import Order, read_order, write_i8, write_i16, write_order
 from robust_serial.utils import open_serial_port, setRelay  # Import setRelay function
-
+from PyQt5.QtWidgets import (
+    QApplication, QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QTabWidget,
+    QGridLayout, QComboBox, QFileDialog, QTextEdit, QMessageBox
+)
 import string
 
 TARGET_RESISTANCE = 5000e6  # 5000 MΩ
@@ -31,17 +34,19 @@ def bin_resistance(value):
 
 
 class TestingProcess():
-    def __init__(self, arduino_port, dmm_port):
+    def __init__(self, arduino_port, dmm_port, file_path=None):
         """
         Initializes connections to both the Arduino and the DMM based on the selected USB ports.
         """
         self.arduino_port = arduino_port
         self.dmm_port = dmm_port
+        self.file_path = file_path 
         self.final_resistances = {}
+        self.voltage_per_index = 7.843
 
         # Initialize Arduino connection
         try:
-            self.serial_file = open_serial_port(port=arduino_port, baudrate=115200, timeout=None)
+            self.serial_file = open_serial_port(arduino_port, baudrate=115200, timeout=None)
         except Exception as e:
             raise RuntimeError(f"Failed to connect to Arduino on {arduino_port}: {e}")
 
@@ -66,18 +71,20 @@ class TestingProcess():
         self.rm = pyvisa.ResourceManager()
         try:
             self.dmm = self.rm.open_resource(dmm_port)
-            self.dmm.write("*IDN?")  # Test command to verify connection
+            self.dmm.write("*IDN?")
+            self.dmm.timeout = 5000
+            self.dmm.write_termination = '\n'
+            self.dmm.read_termination = '\n'
             print(f"Connected to DMM on {dmm_port}")
         except Exception as e:
-            raise RuntimeError(f"Failed to connect to DMM on {dmm_port}: {e}")
+            raise RuntimeError(f"failed to connect to dmm on {dmm_port}")
     
     def read_DMM(self):
         """
         Reads voltage from the Siglent SDM3055 digital multimeter via USB.
         """
         try:
-            self.dmm.write("MEAS:VOLT:DC?")  # Command to read DC voltage
-            voltage = float(self.dmm.read())  # Read and convert to float
+            voltage = float(self.dmm.query("MEAS:VOLT:DC?"))
             return voltage
         except Exception as e:
             print(f"Error reading from DMM: {e}")
@@ -121,35 +128,19 @@ class TestingProcess():
 
             # Iterate through voltage steps
             for voltageStage in stages_index:
-                print(f"Setting high voltage to stage {voltageStage}")
-
-                # Wait for user to manually set the high voltage
-                user_confirmed = QMessageBox.question(
-                    self, "Manual High Voltage Adjustment", 
-                    f"Please set the high voltage to {voltageStage * voltagePerIndex:.2f} V and click OK.",
-                    QMessageBox.Ok | QMessageBox.Cancel
-                )
-
-                if user_confirmed == QMessageBox.Cancel:
-                    print("Test aborted by user.")
-                    break  # Exit test if the user cancels
-
-                write_order(self.serial_file, Order.HV_UPDATED)  # Order 12
-
-                # Confirm high voltage update from Arduino
+                yield voltageStage
+                
+                write_order(self.serial_file, Order.HV_UPDATED)
                 while read_order(self.serial_file) != Order.HV_UPDATED:
                     time.sleep(0.1)
-
-                # Iterate through all relays
+                
                 for relay in range(numRelays):
-                    print(f"Closing relay {relay}")
-                    setRelay(self.serial_file, relay)  # Close relay
-                    write_order(self.serial_file, Order.READY_RELAY)  # Order 8
-
-                    # Confirm relay is ready
-                    while read_order(self.serial_file) != Order.READY_RELAY:
+                    setRelay(self.serial_file, relay)
+                    write_order(self.serial_file,Order.READY_RELAY)
+                    while read_order(self.serial_file) !=Order.READY_RELAY:
                         time.sleep(0.1)
-
+                        
+ 
                     # Read voltage data from DMM
                     avg_voltage, std_err = self.communicate_with_DMM()
                     if avg_voltage is not None:

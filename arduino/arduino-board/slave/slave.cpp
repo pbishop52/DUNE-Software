@@ -14,15 +14,14 @@ void setup() {
   // Init Serial
   Serial.begin(SERIAL_BAUD);
 
-  for( int i:  RELAY_CHANNEL){
+  for (int i : RELAY_CHANNEL) {
     pinMode(i, OUTPUT);
   }
+  pinMode(HV_CONTROL, OUTPUT);
+
   
 
-  //pinMode(DIRECTION_PIN, OUTPUT);// direction
-  stop();
 
- 
 
   // Wait until the arduino is connected to master
   while (!is_connected) {
@@ -33,33 +32,18 @@ void setup() {
 }
 
 void loop() {
-  get_messages_from_serial();
-  update_motors_orders();
-}
-"""
-void update_motors_orders() {
-  
-  motor_speed = constrain(motor_speed, -SPEED_MAX, SPEED_MAX);
-  // Send motor speed order
-  if (motor_speed > 0) {
-    digitalWrite(DIRECTION_PIN, LOW);
-  } else {
-    digitalWrite(DIRECTION_PIN, HIGH);
+  for (int i = 0; i < 255; i++) {
+    analogWrite(HV_CONTROL, i);
+    String j= String(i);
+    //Serial.print(i);
+    delay(10000);
   }
-  analogWrite(stepPin, convert_to_pwm(float(motor_speed)));
+  //get_messages_from_serial();
+  //update_motors_orders();
 }
 
-void stop() {
-  analogWrite(stepPin, 0);
-  digitalWrite(DIRECTION_PIN, LOW);
-}
-
-int convert_to_pwm(float motor_speed) {
-  // TODO: compensate the non-linear dependency speed = f(PWM_Value)
-  return (int)round(abs(motor_speed) * (255. / 100.));
-}
-"""
-void get_messages_from_serial() {
+  void
+  get_messages_from_serial() {
   if (Serial.available() > 0) {
     // The first byte received is the instruction
     Order order_received = read_order();
@@ -146,7 +130,7 @@ void wait_for_bytes(int num_bytes, unsigned long timeout) {
 
 // NOTE : Serial.readBytes is SLOW
 // this one is much faster, but has no timeout
-void read_signed_bytes(int8_t* buffer, size_t n) {
+void read_signed_bytes(int8_t* buffer, s255ize_t n) {
   size_t i = 0;
   int c;
   while (i < n) {
@@ -157,7 +141,7 @@ void read_signed_bytes(int8_t* buffer, size_t n) {
   }
 }
 
-int8_t read_i8() {
+int8_t read_i8() {255
   wait_for_bytes(1, 100);  // Wait for 1 byte with a timeout of 100 ms
   return (int8_t)Serial.read();
 }

@@ -1,4 +1,5 @@
 import sys
+import pyvisa
 import os
 import time
 import numpy as np
@@ -125,21 +126,31 @@ class RelayTab(QWidget):
 
 class TestingThread(QThread):
     relay_updated = pyqtSignal(int)
+    voltage_stage_prompt = pyqtSignal(float)
     voltage_stage_complete = pyqtSignal()
     voltage_measured = pyqtSignal(float, float)
     test_complete = pyqtSignal()
 
-    def __init__(self, arduino_port, dmm_port):
+    def __init__(self,arduino_port, dmm_port, file_path):
         super().__init__()
-        self.arduino_port = arduino_port
-        self.dmm_port = dmm_port
-        self.testing_process = TestingProcess(arduino_port, dmm_port)
+        self.waiting_for_user = False
+        self.testing_process = TestingProcess(arduino_port, dmm_port, file_path)
         self.is_running = True
 
     def run(self):
         for voltage_stage in self.testing_process.standardTest():
             if not self.is_running:
                 return
+                
+            self.voltage_stage_prompt.emit(voltage_stage)
+            self.waiting_for_user = True
+            
+            while self.waiting_for_user:
+                if not self.is_running:
+                    return
+                time.sleep(0.1)
+                
+                
             for relay in range(8):
                 if not self.is_running:
                     return
@@ -149,16 +160,22 @@ class TestingThread(QThread):
                 self.voltage_measured.emit(avg_voltage, std_err)
 
             self.voltage_stage_complete.emit()
+            
         self.test_complete.emit()
 
     def stop(self):
         self.is_running = False
+        
+    def resume(self):
+        self.waiting_for_user = False
+        
 
 class MainWindow(QWidget):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Resistor Testing GUI")
         self.setGeometry(100, 100, 1200, 800)
+        self.file_path = ""
 
         main_layout = QVBoxLayout()
         self.setLayout(main_layout)
@@ -228,16 +245,16 @@ class MainWindow(QWidget):
             self.plot_curve.setData(x, y)
 
     def refresh_ports(self):
-        """
-        Detects available serial ports and populates the dropdowns for Arduino and DMM.
-        """
-        ports = [port.device for port in serial.tools.list_ports.comports()]
+        serial_ports = [port.device for port in serial.tools.list_ports.comports()]
         self.arduino_port_dropdown.clear()
+        if serial_ports:
+            self.arduino_port_dropdown.addItems(serial_ports)
+            
+        rm = pyvisa.ResourceManager('@py')
+        visa_resources = rm.list_resources()
         self.dmm_port_dropdown.clear()
-
-        if ports:
-            self.arduino_port_dropdown.addItems(ports)
-            self.dmm_port_dropdown.addItems(ports)
+        if visa_resources:
+            self.dmm_port_dropdown.addItems(visa_resources)
 
     def select_file(self):
         file_path, _ = QFileDialog.getSaveFileName(self, "Select File", "", "CSV Files (*.csv)")
@@ -247,20 +264,26 @@ class MainWindow(QWidget):
     def start_test(self):
         arduino_port = self.arduino_port_dropdown.currentText()
         dmm_port = self.dmm_port_dropdown.currentText()
+        file_path = self.file_path_display.toPlainText().strip()
 
 
         if not arduino_port or not dmm_port:
             QMessageBox.warning(self, "Error", "Please select both Arduino and DMM ports before starting.")
             return
+            
+        if not file_path:
+            QMessageBox.warning(self, "Error","Please select a file_path to save the test results.")
+            return
 
         self.is_testing = True
         self.plot_data = []
 
-        self.testing_process = TestingProcess(arduino_port, dmm_port)
-        self.testing_thread = TestingThread(self.testing_process)
+        self.testing_thread = TestingThread(arduino_port, dmm_port, file_path)
+        self.testing_process = self.testing_thread.testing_process
         self.testing_thread.relay_updated.connect(self.relay_tab.update_relay_status)
-        self.testing_thread.voltage_stage_complete.connect(self.prompt_voltage_stage)
+        self.testing_thread.voltage_stage_prompt.connect(self.handle_voltage_stage_prompt)
         self.testing_thread.voltage_measured.connect(self.update_voltage_plot)
+        self.testing_thread.test_complete.connect(self.on_test_complete)
 
         self.testing_thread.start()
         self.timer.start(1000)
@@ -270,6 +293,7 @@ class MainWindow(QWidget):
         self.is_testing = False
         self.timer.stop()
         if self.testing_thread:
+            self.testing_thread.waiting_for_user = False
             self.testing_thread.stop()
             self.testing_thread.quit()
             self.testing_thread.wait()
@@ -293,14 +317,25 @@ class MainWindow(QWidget):
         self.results_window.show()
 
 
-    def prompt_voltage_stage(self):
-        QMessageBox.information(self, "Voltage Stage Complete", "Please switch input voltage and click OK to continue.")
+   #def prompt_voltage_stage(self):
+       #QMessageBox.information(self, "Voltage Stage Complete", "Please switch input voltage and click OK to continue.")
 
     def update_voltage_plot(self, avg_voltage, std_err):
         if self.is_testing:
             self.plot_data.append((len(self.plot_data), avg_voltage))
             x, y = zip(*self.plot_data)
             self.plot_curve.setData(x, y)
+            
+    def handle_voltage_stage_prompt(self,voltage_Stage):
+        voltage_per_index = self.testing_process.voltage_per_index
+        
+        response = QMessageBox.question(self, "Manual High Voltage Measurement",f"Please set the high voltage to {voltage_Stage * voltage_per_index:.2f} V and click OK.", QMessageBox.Ok | QMessageBox.Cancel)
+        
+        if response == QMessageBox.Cancel:
+            QMessageBoxinformation(self, "Test Aborted", "Test was canceled by the user.")
+            self.stop_test()
+        else:
+            self.testing_thread.resume()
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)

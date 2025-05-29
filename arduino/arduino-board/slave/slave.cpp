@@ -39,7 +39,7 @@ void loop() {
     //Serial.print(i);
     //delay(10000);
 
-  }
+  //}
   //get_messages_from_serial();
   //update_motors_orders();
 }
@@ -49,8 +49,8 @@ void loop() {
   if (Serial.available() > 0) {
     // The first byte received is the instruction
     Order order_received = read_order();
-    Serial.print(">> Arduino: Received order")
-    Serial.printIn((int)order_received);
+    Serial.print(">> Arduino: Received order");
+    Serial.println((int)order_received);
 
     if (order_received == HELLO) {
       // If the cards haven't say hello, check the connection
@@ -69,9 +69,9 @@ void loop() {
           {
             int relay_current = read_i8();
             for (int i = 0; i < 8; i++) {
-              digitalWrite(RELAY_CHANNEL[i], LOW);
+              digitalWrite(RELAY_CHANNEL[i], HIGH);
             }
-            digitalWrite(RELAY_CHANNEL[relay_current], HIGH);
+            digitalWrite(RELAY_CHANNEL[relay_current], LOW);
             break;
           }
         case HV_SET:
@@ -85,6 +85,7 @@ void loop() {
         case READY_RELAY:
           {
             write_order(READY_RELAY);
+            Serial.println("Sending  READY_RELAY");
             break;
           }
         case START_TEST:
@@ -102,7 +103,7 @@ void loop() {
           }
         case HV_UPDATED:
           {
-            Serial.printIn(">> Arduino: HV_UPDATED received");
+            Serial.println(">> Arduino: HV_UPDATED received");
             write_order(HV_UPDATED);
             break;
           }
@@ -133,7 +134,7 @@ void wait_for_bytes(int num_bytes, unsigned long timeout) {
 
 // NOTE : Serial.readBytes is SLOW
 // this one is much faster, but has no timeout
-void read_signed_bytes(int8_t* buffer, s255ize_t n) {
+void read_signed_bytes(int8_t* buffer, size_t n) {
   size_t i = 0;
   int c;
   while (i < n) {
@@ -144,7 +145,7 @@ void read_signed_bytes(int8_t* buffer, s255ize_t n) {
   }
 }
 
-int8_t read_i8() {255
+int8_t read_i8() {
   wait_for_bytes(1, 100);  // Wait for 1 byte with a timeout of 100 ms
   return (int8_t)Serial.read();
 }

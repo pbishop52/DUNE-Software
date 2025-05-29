@@ -95,13 +95,13 @@ def setRelay(serial_conn, current_relay: int) -> None:
     :param current_relay: The relay to be closed (activated)
     """
     print(f"Entered setRelay for {current_relay}")
-    # Open (deactivate) all relays
+    # close (deactivate) all relays
     for relay in range(8):
-        print(f"Opening relay {relay}")
+        print(f"closing relay {relay}")
         write_order(serial_conn, Order.RELAY, relay)
     
-    # Close (activate) the current relay
-    print(f"Closing relay {current_relay}")
+    # open (activate) the current relay
+    print(f"opening relay {current_relay}")
     write_order(serial_conn, Order.RELAY, current_relay)
 
     print(f"Relay {current_relay} activated.")

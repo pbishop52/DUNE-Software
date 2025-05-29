@@ -139,7 +139,7 @@ class TestingProcess():
                 write_order(self.serial_file, Order.HV_SET)
                 write_i8(self.serial_file, voltageStage)
                 while read_order(self.serial_file) != Order.HV_UPDATED:
-                    print(f"Waiting for Arduino to acknowledge HV_UPDATED ... attempt {attempts}")
+                    #print(f"Waiting for Arduino to acknowledge HV_UPDATED ... attempt {attempts}")
                     time.sleep(0.1)
                     attempts += 1
                     if attempts > 100:

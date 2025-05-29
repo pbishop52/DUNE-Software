@@ -30,6 +30,8 @@ def read_order(f: BinaryIO) -> Order:
     Reads one byte and converts it to an Order enum
     Handles errors if the byte is not a valid enum value
     """
+    
+    
     byte = read_i8(f)
     if byte <0:
         raise RuntimeError(f"Failed to read order byte from serial. Got: {byte}")
@@ -37,6 +39,9 @@ def read_order(f: BinaryIO) -> Order:
         return Order(byte)
     except ValueError:
         return RuntimeError(f" Received unknown order byte: {byte}")
+        
+        
+        
     #return Order(read_i8(f))
 
 
@@ -46,7 +51,13 @@ def read_i8(f: BinaryIO) -> Order:
     :return: (int8_t)
     """
     return struct.unpack("<b", bytearray(f.read(1)))[0]
-
+    """
+    Read a single unsigned byte from the serial connection and return as int
+    """
+    #data = f.read(1)
+    #if not data or len(data) !=1:
+        #raise RuntimeError("Failed to read 1 byte from serial")
+    #return struct.unpack("<B", data)[0]
 
 def read_i16(f: BinaryIO) -> Order:
     """

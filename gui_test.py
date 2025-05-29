@@ -9,10 +9,10 @@ from PyQt5.QtWidgets import (
     QApplication, QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QTabWidget,
     QGridLayout, QComboBox, QFileDialog, QTextEdit, QMessageBox
 )
-from PyQt5.QtCore import QTimer, QThread, pyqtSignal
+from PyQt5.QtCore import QTimer, QThread, pyqtSignal, Qt
 from PyQt5.QtGui import QPixmap, QPainter
 from TestProc01 import TestingProcess
-
+from pyqtgraph.exporters import ImageExporter
 from PyQt5.QtGui import QPixmap, QPainter
 
 class ResultsWindow(QWidget):
@@ -307,7 +307,7 @@ class MainWindow(QWidget):
         timestamp = time.strftime("%Y%m%d_%H%M%S")
         filename = f"voltage_vs_time_{timestamp}.png"
         save_path = os.path.join(os.getcwd(), filename)
-        exporter = pg.exporters.ImageExporter(self.plot_widget.plotItem)
+        exporter = ImageExporter(self.plot_widget.plotItem)
         exporter.export(save_path)
         print(f"Plot saved to {save_path}")
 

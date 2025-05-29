@@ -2,7 +2,7 @@ import glob
 import queue
 import sys
 from typing import List, Optional
-
+from robust_serial import write_order, Order
 import serial
 import serial.tools.list_ports
 
@@ -94,11 +94,14 @@ def setRelay(serial_conn, current_relay: int) -> None:
     :param serial_conn: Serial connection object
     :param current_relay: The relay to be closed (activated)
     """
+    print(f"Entered setRelay for {current_relay}")
     # Open (deactivate) all relays
-    for relay in range(10):  # Assuming 10 relays (adjust if needed)
+    for relay in range(8):
+        print(f"Opening relay {relay}")
         write_order(serial_conn, Order.RELAY, relay)
     
     # Close (activate) the current relay
+    print(f"Closing relay {current_relay}")
     write_order(serial_conn, Order.RELAY, current_relay)
 
     print(f"Relay {current_relay} activated.")

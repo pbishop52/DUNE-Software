@@ -118,7 +118,9 @@ class TestingProcess():
         indexLimit = int(hvLimit // voltagePerIndex)
         lowIndex = int(lowVoltage // voltagePerIndex)
         stages_index = range(lowIndex, indexLimit, int((indexLimit - lowIndex) // samplesPerStage))
+        print(f"Voltage index range: {list(stages_index)}")
         relay_resistances = {relay: [] for relay in range(numRelays)}
+        print(f"Saving to: {self.file_path}")
 
 
         # Prepare CSV file to save results
@@ -128,17 +130,34 @@ class TestingProcess():
 
             # Iterate through voltage steps
             for voltageStage in stages_index:
+                print(f"Starting voltage stage index loop {voltageStage} ({voltageStage * voltagePerIndex:.2f} V)")
                 yield voltageStage
+                print("Sending HV_UPDATED to arduino...")
                 
-                write_order(self.serial_file, Order.HV_UPDATED)
+                attempts = 0
+                #write_order(self.serial_file, Order.HV_UPDATED)
+                write_order(self.serial_file, Order.HV_SET)
+                write_i8(self.serial_file, voltageStage)
                 while read_order(self.serial_file) != Order.HV_UPDATED:
+                    print(f"Waiting for Arduino to acknowledge HV_UPDATED ... attempt {attempts}")
                     time.sleep(0.1)
+                    attempts += 1
+                    if attempts > 100:
+                        print("[ERROR] Timeout waiting for HV_UPDATED from Arduino")
+                print("Arduino acknowledged HV_UPDATED")
                 
                 for relay in range(numRelays):
+                    print(f"Activating relay {relay}")
                     setRelay(self.serial_file, relay)
                     write_order(self.serial_file,Order.READY_RELAY)
+                    attempts = 0
                     while read_order(self.serial_file) !=Order.READY_RELAY:
                         time.sleep(0.1)
+                        attempts += 1
+                        if attempts > 100:
+                            print(f"[ERROR] Timeout waiting for READY_RELAY on relay {relay}")
+                            return
+                    print(f"Relay {relay} ready. Reading DMM.....")
                         
  
                     # Read voltage data from DMM
@@ -158,7 +177,7 @@ class TestingProcess():
                     else:
                         print(f"Relay {relay}: Failed to read from DMM.")
 
-
+            print("Calculating final resistances ...")
             self.final_resistances = {}  # reset for this run
             for relay, resistances in relay_resistances.items():
                 if resistances:

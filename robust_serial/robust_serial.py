@@ -26,8 +26,18 @@ def read_order(f: BinaryIO) -> Order:
     """
     :param f: file handler or serial file
     :return: (Order Enum Object)
+    
+    Reads one byte and converts it to an Order enum
+    Handles errors if the byte is not a valid enum value
     """
-    return Order(read_i8(f))
+    byte = read_i8(f)
+    if byte <0:
+        raise RuntimeError(f"Failed to read order byte from serial. Got: {byte}")
+    try:
+        return Order(byte)
+    except ValueError:
+        return RuntimeError(f" Received unknown order byte: {byte}")
+    #return Order(read_i8(f))
 
 
 def read_i8(f: BinaryIO) -> Order:
@@ -65,12 +75,14 @@ def write_i8(f: BinaryIO, value: int) -> None:
         print(f"Value error:{value}")
 
 
-def write_order(f: BinaryIO, order: Order) -> None:
+def write_order(f: BinaryIO, order: Order, value: int = None) -> None:
     """
     :param f: file handler or serial file
     :param order: (Order Enum Object)
     """
     write_i8(f, order.value)
+    if value is not None:
+        write_i8(f,value)
 
 
 def write_i16(f: BinaryIO, value: int) -> None:

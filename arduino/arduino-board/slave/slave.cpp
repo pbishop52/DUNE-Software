@@ -32,11 +32,13 @@ void setup() {
 }
 
 void loop() {
-  for (int i = 0; i < 255; i++) {
-    analogWrite(HV_CONTROL, i);
-    String j= String(i);
+  get_messages_from_serial();
+  //for (int i = 0; i < 255; i++) {
+    //analogWrite(HV_CONTROL, i);
+    //String j= String(i);
     //Serial.print(i);
-    delay(10000);
+    //delay(10000);
+
   }
   //get_messages_from_serial();
   //update_motors_orders();
@@ -47,6 +49,8 @@ void loop() {
   if (Serial.available() > 0) {
     // The first byte received is the instruction
     Order order_received = read_order();
+    Serial.print(">> Arduino: Received order")
+    Serial.printIn((int)order_received);
 
     if (order_received == HELLO) {
       // If the cards haven't say hello, check the connection
@@ -80,8 +84,7 @@ void loop() {
           }
         case READY_RELAY:
           {
-            write_order(ERROR);
-            write_i16(508);
+            write_order(READY_RELAY);
             break;
           }
         case START_TEST:
@@ -99,8 +102,8 @@ void loop() {
           }
         case HV_UPDATED:
           {
-            write_order(ERROR);
-            write_i16(512);
+            Serial.printIn(">> Arduino: HV_UPDATED received");
+            write_order(HV_UPDATED);
             break;
           }
 

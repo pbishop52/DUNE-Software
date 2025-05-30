@@ -13,7 +13,6 @@ from PyQt5.QtCore import QTimer, QThread, pyqtSignal, Qt
 from PyQt5.QtGui import QPixmap, QPainter
 from TestProc01 import TestingProcess
 from pyqtgraph.exporters import ImageExporter
-from PyQt5.QtGui import QPixmap, QPainter
 
 class ResultsWindow(QWidget):
     def __init__(self, results):
@@ -138,10 +137,10 @@ class TestingThread(QThread):
         self.is_running = True
 
     def run(self):
-        for voltage_stage in self.testing_process.standardTest():
+        test_gen = self.testing_process.standardTest()
+        for voltage_stage in test_gen:
             if not self.is_running:
                 return
-                
             self.voltage_stage_prompt.emit(voltage_stage)
             self.waiting_for_user = True
             
@@ -149,7 +148,11 @@ class TestingThread(QThread):
                 if not self.is_running:
                     return
                 time.sleep(0.1)
-                
+            try:
+                next(test_gen)
+            except StopIteration:
+                break
+            
                 
             for relay in range(8):
                 if not self.is_running:
@@ -332,7 +335,7 @@ class MainWindow(QWidget):
         response = QMessageBox.question(self, "Manual High Voltage Measurement",f"Please set the high voltage to {voltage_Stage * voltage_per_index:.2f} V and click OK.", QMessageBox.Ok | QMessageBox.Cancel)
         
         if response == QMessageBox.Cancel:
-            QMessageBoxinformation(self, "Test Aborted", "Test was canceled by the user.")
+            QMessageBox.information(self, "Test Aborted", "Test was canceled by the user.")
             self.stop_test()
         else:
             self.testing_thread.resume()

@@ -1,54 +1,68 @@
+import time
+import csv
+import numpy as np
 import pyvisa
-'''
-rm = pyvisa.ResourceManager()
-resources = rm.list_resources()
+from time import sleep
+from robust_serial import Order, read_order, write_i8, write_i16, write_order
+from robust_serial.utils import open_serial_port, setRelay  # Import setRelay function
+from PyQt5.QtWidgets import (
+    QApplication, QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QTabWidget,
+    QGridLayout, QComboBox, QFileDialog, QTextEdit, QMessageBox
+)
+import string
 
-if resources:
-    print("Available VISA resources:")
-    for res in resources:
-        print(F" {res}")
-else:
-    print("No VISA resources found")
-'''
-'''
-with open("/dev/usbtmc1", "wb+") as f:
-    f.write(b"*IDN?\n")
-    f.flush()
-    response = f.read(1024)
-    print(response.decode())
-'''
-rm = pyvisa.ResourceManager('@py')
-dmm = rm.open_resource("USB0::62700::4609::SDM35HBC800947::0::INSTR")
-print(dmm.query("*IDN?"))
-print(dmm.query("MEAS:VOLT:DC?"))
+class TestingProcess():
+    def __init__(self, arduino_port, file_path=None):
+        """
+        Initializes connections to both the Arduino and the DMM based on the selected USB ports.
+        """
+        self.arduino_port = arduino_port
+        
+        self.file_path = file_path 
+        
+        self.voltage_per_index = 7.843
 
-               '''
-                #print(f"Setting high voltage to stage {voltageStage}")
+        # Initialize Arduino connection
+        try:
+            self.serial_file = open_serial_port(arduino_port, baudrate=115200, timeout=None)
+        except Exception as e:
+            raise RuntimeError(f"Failed to connect to Arduino on {arduino_port}: {e}")
 
-                # Wait for user to manually set the high voltage
-                user_confirmed = QMessageBox.question(
-                    None, "Manual High Voltage Adjustment", 
-                    f"Please set the high voltage to {voltageStage * voltagePerIndex:.2f} V and click OK.",
-                    QMessageBox.Ok | QMessageBox.Cancel
-                )
+        is_connected = False
+        while not is_connected:
+            print("Waiting for Arduino...")
+            write_order(self.serial_file, Order.HELLO)
 
-                if user_confirmed == QMessageBox.Cancel:
-                    print("Test aborted by user.")
-                    break  # Exit test if the user cancels
+            bytes_array = bytearray(self.serial_file.read(1))
+            if not bytes_array:
+                time.sleep(2)
+                continue
 
-                write_order(self.serial_file, Order.HV_UPDATED)  # Order 12
+            byte = bytes_array[0]
+            if byte in [Order.HELLO.value, Order.ALREADY_CONNECTED.value]:
+                is_connected = True
+                write_order(self.serial_file, Order.ALREADY_CONNECTED)
 
-                # Confirm high voltage update from Arduino
-                while read_order(self.serial_file) != Order.HV_UPDATED:
-                    time.sleep(0.1)
+        print(f"Connected to Arduino on {arduino_port}")
+        
+    def standardTest(self):
+        for i in range(100,255):
+            print(f"Step: {i}")
+            write_order(self.serial_file, Order.HV_SET,i)
+            bytes_array = bytearray(self.serial_file.read(1))
+            time.sleep(0.1)
+            if not bytes_array:
+                print("Nothing recieved")
+            else:
+                print("maybe yay")
+            time.sleep(10)
+            
+        self.serial_file.close()    
 
-                # Iterate through all relays
-                for relay in range(numRelays):
-                    print(f"Closing relay {relay}")
-                    setRelay(self.serial_file, relay)  # Close relay
-                    write_order(self.serial_file, Order.READY_RELAY)  # Order 8
 
-                    # Confirm relay is ready
-                    while read_order(self.serial_file) != Order.READY_RELAY:
-                        time.sleep(0.1)
-                '''
+if __name__ == "__main__":
+    arduino_port = "/dev/ttyACM0"  # Example port, replace with actual selection
+    #dmm_port = "USB0::0x1AB1::0x09C4::DM3R12345678::INSTR"  # Example VISA address
+
+    tester = TestingProcess(arduino_port)
+    tester.standardTest()

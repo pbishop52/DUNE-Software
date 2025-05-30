@@ -117,7 +117,7 @@ class TestingProcess():
         # Generate high voltage steps
         indexLimit = int(hvLimit // voltagePerIndex)
         lowIndex = int(lowVoltage // voltagePerIndex)
-        stages_index = range(lowIndex, indexLimit, int((indexLimit - lowIndex) // samplesPerStage))
+        stages_index = np.linspace(lowIndex, indexLimit,samplesPerStage, dtype=int)
         print(f"Voltage index range: {list(stages_index)}")
         relay_resistances = {relay: [] for relay in range(numRelays)}
         print(f"Saving to: {self.file_path}")
@@ -139,7 +139,6 @@ class TestingProcess():
                 write_order(self.serial_file, Order.HV_SET)
                 write_i8(self.serial_file, voltageStage)
                 while read_order(self.serial_file) != Order.HV_UPDATED:
-                    #print(f"Waiting for Arduino to acknowledge HV_UPDATED ... attempt {attempts}")
                     time.sleep(0.1)
                     attempts += 1
                     if attempts > 100:

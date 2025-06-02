@@ -42,7 +42,6 @@ class TestingProcess():
         self.dmm_port = dmm_port
         self.file_path = file_path 
         self.final_resistances = {}
-        self.voltage_per_index = 7.843
 
         # Initialize Arduino connection
         try:

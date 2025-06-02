@@ -67,8 +67,7 @@ void loop() {
       switch (order_received) {
         case RELAY:
           {
-            Serial.println("Received RELAY command for relay");
-            Serial.println(relayIndex);
+            
             int relay_current = read_i8();
             for (int i = 0; i < 8; i++) {
               digitalWrite(RELAY_CHANNEL[i], HIGH);

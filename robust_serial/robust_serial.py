@@ -80,8 +80,9 @@ def write_i8(f: BinaryIO, value: int) -> None:
     :param f: file handler or serial file
     :param value: (int8_t)
     """
-    if -128 <= value <= 127:
-        f.write(struct.pack("<b", value))
+    #if -128 <= value <= 127:
+    if 0 <= value <= 255:
+        f.write(struct.pack("<B", value))
     else:
         print(f"Value error:{value}")
 

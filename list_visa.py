@@ -100,7 +100,7 @@ class TestingProcess():
             print(f"Setting HV to DAC value: {i} ~ {i * voltage_per_unit:.2f} V")
             
             write_order(self.serial_file, Order.HV_SET,i)
-            time.sleep(0.1)
+            time.sleep(2)
             
             bytes_array = bytearray(self.serial_file.read(1))
             if not bytes_array:
@@ -116,8 +116,8 @@ class TestingProcess():
                 if not relay_array:
                     print("No RELAY order received")
                 else:
-                    print(f"Relay {relay} activated")
-                
+                    print(f"Relay {relay +1} activated")
+                    time.sleep(10)
                 
             
             response = input("Type y to continue to next stage, anything else to quit:  ").strip().lower()

@@ -73,9 +73,9 @@ void loop() {
               digitalWrite(RELAY_CHANNEL[i], HIGH);
             }
             digitalWrite(RELAY_CHANNEL[relay_current], LOW);
-            break;
             Serial.println("Sending READY_RELAY");
             write_order(READY_RELAY);
+            break;
           }
         case HV_SET:
           {

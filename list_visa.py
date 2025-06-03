@@ -87,22 +87,39 @@ class TestingProcess():
 
        
     def standardTest(self):
-        step_size = 13
+        step_size = 13 #DAC units for ~100V step
         low_index = 0
         upper_index = 256
+        voltage_per_unit = 7.843 # = 2000/255
+        num_relays = 8
+        
+        
         print(f"Step size = {step_size}, approx 100V step size")
         for i in range(low_index,upper_index,step_size):
             #print(f"Step: {i}")
-            print(f"Setting HV to DAC value: {i} ~ {i * 7.843:.2f} V")
+            print(f"Setting HV to DAC value: {i} ~ {i * voltage_per_unit:.2f} V")
             
             write_order(self.serial_file, Order.HV_SET,i)
-            bytes_array = bytearray(self.serial_file.read(1))
             time.sleep(0.1)
+            
+            bytes_array = bytearray(self.serial_file.read(1))
             if not bytes_array:
-                print("Nothing received")
+                print("No HV order received")
             else:
-                print("maybe yay")
-            #time.sleep(10)
+                print(f"Arduino communicating")
+            
+            for relay in range(num_relays):
+                print(f"Activating relay {relay} at {i * voltage_per_unit:.2f} V")
+                write_order(self.serial_file, Order.RELAY, relay)
+                
+                relay_array = bytearray(self.serial_file.read(1))
+                if not relay_array:
+                    print("No RELAY order received")
+                else:
+                    print(f"Relay {relay} activated")
+                
+                
+            
             response = input("Type y to continue to next stage, anything else to quit:  ").strip().lower()
             if response != 'y':
                 print("Stopping test.")

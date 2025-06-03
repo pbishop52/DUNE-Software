@@ -125,7 +125,7 @@ class TestingProcess():
         # Prepare CSV file to save results
         with open(self.file_path, "w", newline="") as csvfile:
             csv_writer = csv.writer(csvfile)
-            csv_writer.writerow(["Voltage Step", "Relay", "Avg Voltage (V)", "Standard Error", "Resistance (MΩ)","Bin Label"])
+            csv_writer.writerow(["Input HV Step", "Relay", "Avg Voltage (V)", "Standard Error", "Resistance (MΩ)","Bin Label"])
 
             # Iterate through voltage steps
             for voltageStage in stages_index:

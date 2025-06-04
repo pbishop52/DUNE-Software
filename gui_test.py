@@ -11,97 +11,8 @@ from PyQt5.QtWidgets import (
 )
 from PyQt5.QtCore import QTimer, QThread, pyqtSignal, Qt
 from PyQt5.QtGui import QPixmap, QPainter
-from TestProc01 import TestingProcess
+from TestProcedure import TestingProcess
 from pyqtgraph.exporters import ImageExporter
-
-class ResultsWindow(QWidget):
-    def __init__(self, results):
-        super().__init__()
-        self.setWindowTitle("Final Resistance Results")
-        self.setGeometry(150, 150, 1000, 250)
-
-        layout = QVBoxLayout()
-        row = QHBoxLayout()
-
-        for relay, data in sorted(results.items()):
-            relay_container = QWidget()
-            relay_container.setFixedWidth(100)
-            relay_container.setStyleSheet("""
-                QWidget {
-                    border: 1px solid #ccc;
-                    border-radius: 10px;
-                    background-color: #f9f9f9;
-                    padding: 10px;
-                }
-            """)
-            relay_layout = QVBoxLayout()
-            relay_layout.setAlignment(Qt.AlignTop)
-            relay_layout.setSpacing(5)
-
-            relay_label = QLabel(f"<b>Relay {relay}</b>")
-            resistance_label = QLabel(f"{data['avg_resistance'] / 1e6:.2f} MΩ")
-            bin_label = QLabel(f"Bin: {data['bin_label']}")
-
-            relay_layout.addWidget(relay_label, alignment=Qt.AlignCenter)
-            relay_layout.addWidget(resistance_label, alignment=Qt.AlignCenter)
-            relay_layout.addWidget(bin_label, alignment=Qt.AlignCenter)
-
-            relay_container.setLayout(relay_layout)
-            row.addWidget(relay_container)
-
-        layout.addLayout(row)
-
-        self.save_button = QPushButton("Save as Image")
-        self.save_button.clicked.connect(self.save_image)
-        layout.addWidget(self.save_button, alignment=Qt.AlignCenter)
-
-        self.setLayout(layout)
-
-    def save_image(self):
-        file_path, _ = QFileDialog.getSaveFileName(self, "Save Image", "", "PNG Files (*.png)")
-        if file_path:
-            pixmap = self.grab()
-            pixmap.save(file_path)
-"""
-attempt at having a color code
-class ResultsWindow(QWidget):
-    def __init__(self, results):
-        super().__init__()
-        self.setWindowTitle("Final Resistance Results")
-        self.setGeometry(150, 150, 800, 200)
-        layout = QHBoxLayout()
-
-        color_map = {
-            "FAIL": "#ff9999",   # Light red
-            "WARN": "#fff79a",   # Light yellow
-            "PASS": "#b3ffb3"    # Light green
-        }
-
-        for relay, data in sorted(results.items()):
-            box = QVBoxLayout()
-            box_widget = QWidget()
-            box_widget.setStyleSheet(f"background-color: {color_map.get(data['bin_label'], '#ffffff')};"
-                                     "border: 1px solid black; padding: 10px; border-radius: 5px;")
-            inner_layout = QVBoxLayout()
-            inner_layout.addWidget(QLabel(f"Relay {relay}"))
-            inner_layout.addWidget(QLabel(f"{data['avg_resistance']/1e6:.2f} MΩ"))
-            inner_layout.addWidget(QLabel(f"Bin: {data['bin_label']}"))
-            box_widget.setLayout(inner_layout)
-            box.addWidget(box_widget)
-            layout.addLayout(box)
-
-        self.save_button = QPushButton("Save as Image")
-        self.save_button.clicked.connect(self.save_image)
-        layout.addWidget(self.save_button)
-        self.setLayout(layout)
-
-    def save_image(self):
-        file_path, _ = QFileDialog.getSaveFileName(self, "Save Image", "", "PNG Files (*.png)")
-        if file_path:
-            pixmap = self.grab()
-            pixmap.save(file_path)
-
-"""
 
 class RelayTab(QWidget):
     def __init__(self):
@@ -112,7 +23,7 @@ class RelayTab(QWidget):
 
         self.relay_buttons = []
         for i in range(8):  # Assuming 8 relays
-            relay_button = QPushButton(f"Relay {i}")
+            relay_button = QPushButton(f"Relay {i +1}")
             relay_button.setStyleSheet("background-color: gray;")
             self.relay_grid.addWidget(relay_button, i // 4, i % 4)
             self.relay_buttons.append(relay_button)

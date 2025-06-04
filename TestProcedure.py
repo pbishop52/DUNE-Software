@@ -92,6 +92,7 @@ class TestingProcess():
         upper_index = 256
         voltage_per_unit = 7.843 # = 2000/255
         num_relays = 8
+        data = []
         
         
         print(f"Step size = {step_size}, approx 100V step size")
@@ -109,7 +110,7 @@ class TestingProcess():
                 print(f"Arduino communicating")
             
             for relay in range(num_relays):
-                print(f"Activating relay {relay} at {i * voltage_per_unit:.2f} V")
+                print(f"Activating relay {relay+1} at {i * voltage_per_unit:.2f} V")
                 write_order(self.serial_file, Order.RELAY, relay)
                 
                 relay_array = bytearray(self.serial_file.read(1))
@@ -117,7 +118,18 @@ class TestingProcess():
                     print("No RELAY order received")
                 else:
                     print(f"Relay {relay +1} activated")
-                    time.sleep(10)
+                    
+                    avg_voltage, std_err = self.communicate_with_DMM()
+                    
+                    if avg_voltage is not None:
+                        print(f" {avg_voltage:.4f} +- {std_err:.4f} V measured across relay {relay+1}")
+                        data.append({'DAC Value': i, 'Voltage Step [V]': i*voltage_per_unit, 'Relay': relay+1, 'Measured Voltage [V]': avg_voltage, 'Voltage Error [V]': std_err})
+                    else:
+                        print(f"Failed to get DMM reading for relay {relay +1}")
+                    
+                    
+                    
+                    time.sleep(5)
                 
             
             response = input("Type y to continue to next stage, anything else to quit:  ").strip().lower()

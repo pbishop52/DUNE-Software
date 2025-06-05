@@ -9,6 +9,7 @@ from PyQt5.QtWidgets import (
     QApplication, QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QTabWidget,
     QGridLayout, QComboBox, QFileDialog, QTextEdit, QMessageBox
 )
+from PyQt5.QtCore import QTimer, QThread, pyqtSignal, Qt
 import string
 
 class TestingProcess():
@@ -17,10 +18,11 @@ class TestingProcess():
         Initializes connections to both the Arduino and the DMM based on the selected USB ports.
         """
         self.arduino_port = arduino_port
-        
+        self.dmm_port = dmm_port
         self.file_path = file_path 
+
+        super().__init__() 
         
-        self.voltage_per_index = 7.843
 
         # Initialize Arduino connection
         try:

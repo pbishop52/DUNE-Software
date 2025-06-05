@@ -11,7 +11,7 @@ from PyQt5.QtWidgets import (
 )
 from PyQt5.QtCore import QTimer, QThread, pyqtSignal, Qt
 from PyQt5.QtGui import QPixmap, QPainter
-from TestProcedure import TestingProcess
+from TestProc01 import TestingProcess
 from pyqtgraph.exporters import ImageExporter
 
 class RelayTab(QWidget):
@@ -48,32 +48,17 @@ class TestingThread(QThread):
         self.is_running = True
 
     def run(self):
-        test_gen = self.testing_process.standardTest()
-        for voltage_stage in test_gen:
+        self.testing_process.standardTest()
+        #self.testing_process.set_high_voltage(voltage_stage) 
+        for relay in range(8):
             if not self.is_running:
                 return
-            self.voltage_stage_prompt.emit(voltage_stage)
-            self.waiting_for_user = True
-            
-            while self.waiting_for_user:
-                if not self.is_running:
-                    return
-                time.sleep(0.1)
-            try:
-                next(test_gen)
-            except StopIteration:
-                break
-            
-                
-            for relay in range(8):
-                if not self.is_running:
-                    return
 
-                self.relay_updated.emit(relay)
-                avg_voltage, std_err = self.testing_process.communicate_with_DMM()
-                self.voltage_measured.emit(avg_voltage, std_err)
+            self.relay_updated.emit(relay)
+            avg_voltage, std_err = self.testing_process.communicate_with_DMM()
+            self.voltage_measured.emit(avg_voltage, std_err)
 
-            self.voltage_stage_complete.emit()
+        self.voltage_stage_complete.emit()
             
         self.test_complete.emit()
 
@@ -195,7 +180,7 @@ class MainWindow(QWidget):
         self.testing_thread = TestingThread(arduino_port, dmm_port, file_path)
         self.testing_process = self.testing_thread.testing_process
         self.testing_thread.relay_updated.connect(self.relay_tab.update_relay_status)
-        self.testing_thread.voltage_stage_prompt.connect(self.handle_voltage_stage_prompt)
+
         self.testing_thread.voltage_measured.connect(self.update_voltage_plot)
         self.testing_thread.test_complete.connect(self.on_test_complete)
 
@@ -226,13 +211,9 @@ class MainWindow(QWidget):
         print(f"Plot saved to {save_path}")
 
         # Show results summary
-        results = self.testing_process.get_final_resistances()
-        self.results_window = ResultsWindow(results)
-        self.results_window.show()
+        #results = self.testing_process.get_final_resistances()
 
 
-   #def prompt_voltage_stage(self):
-       #QMessageBox.information(self, "Voltage Stage Complete", "Please switch input voltage and click OK to continue.")
 
     def update_voltage_plot(self, avg_voltage, std_err):
         if self.is_testing:
@@ -240,16 +221,7 @@ class MainWindow(QWidget):
             x, y = zip(*self.plot_data)
             self.plot_curve.setData(x, y)
             
-    def handle_voltage_stage_prompt(self,voltage_Stage):
-        voltage_per_index = self.testing_process.voltage_per_index
-        
-        response = QMessageBox.question(self, "Manual High Voltage Measurement",f"Please set the high voltage to {voltage_Stage * voltage_per_index:.2f} V and click OK.", QMessageBox.Ok | QMessageBox.Cancel)
-        
-        if response == QMessageBox.Cancel:
-            QMessageBox.information(self, "Test Aborted", "Test was canceled by the user.")
-            self.stop_test()
-        else:
-            self.testing_thread.resume()
+
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)

@@ -19,9 +19,7 @@ class TestingProcess():
         """
         self.arduino_port = arduino_port
         self.dmm_port = dmm_port
-        self.file_path = file_path 
-
-        super().__init__() 
+        self.file_path = file_path
         
 
         # Initialize Arduino connection
@@ -99,7 +97,6 @@ class TestingProcess():
         
         print(f"Step size = {step_size}, approx 100V step size")
         for i in range(low_index,upper_index,step_size):
-            #print(f"Step: {i}")
             print(f"Setting HV to DAC value: {i} ~ {i * voltage_per_unit:.2f} V")
             
             write_order(self.serial_file, Order.HV_SET,i)

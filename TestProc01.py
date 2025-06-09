@@ -9,6 +9,7 @@ from PyQt5.QtWidgets import (
     QApplication, QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QTabWidget,
     QGridLayout, QComboBox, QFileDialog, QTextEdit, QMessageBox
 )
+from PyQt5.QtCore import QObject, pyqtSignal
 import string
 
 TARGET_RESISTANCE = 5000e6  # 5000 MΩ
@@ -33,14 +34,20 @@ def bin_resistance(value):
     return BIN_LABELS[idx]
 
 
-class TestingProcess():
+class TestingProcess(QObject):
+    relay_updated = pyqtSignal(int)
+    voltage_measured = pyqtSignal(float, float)
+    test_complete = pyqtSignal()
+
     def __init__(self, arduino_port, dmm_port, file_path=None):
         """
         Initializes connections to both the Arduino and the DMM based on the selected USB ports.
         """
+        super().__init__()
         self.arduino_port = arduino_port
         self.dmm_port = dmm_port
         self.file_path = file_path
+        self.is_running = True
         
 
         # Initialize Arduino connection
@@ -106,7 +113,11 @@ class TestingProcess():
         else:
             return None, None
 
-       
+    def stop(self):
+        print("TestingProcess: Stopping Test.")
+        self.is_running = False
+        
+        
     def standardTest(self):
         step_size = 13 #DAC units for ~100V step
         low_index = 0
@@ -118,13 +129,15 @@ class TestingProcess():
         
         print(f"Step size = {step_size}, approx 100V step size")
         for i in range(low_index,upper_index,step_size):
-            voltage_stage = i
+            if not self.is_running:
+                break
+                
+                
             print(f"Setting HV to DAC value: {i} ~ {i * voltage_per_unit:.2f} V")
-            yield voltage_stage
-            
             
             write_order(self.serial_file, Order.HV_SET,i)
             time.sleep(2)
+            self.serial_file.read(1)
             
             bytes_array = bytearray(self.serial_file.read(1))
             if not bytes_array:
@@ -133,8 +146,13 @@ class TestingProcess():
                 print(f"Arduino communicating")
             
             for relay in range(num_relays):
+                if not self.is_running:
+                    break
+                  
                 print(f"Activating relay {relay+1} at {i * voltage_per_unit:.2f} V")
                 write_order(self.serial_file, Order.RELAY, relay)
+                self.relay_updated.emit(relay)
+                self.serial_file.read(1)
                 
                 relay_array = bytearray(self.serial_file.read(1))
                 if not relay_array:
@@ -145,6 +163,9 @@ class TestingProcess():
                     avg_voltage, std_err = self.communicate_with_DMM()
                     
                     if avg_voltage is not None:
+                        #self.relay_updated.emit(relay)
+                        self.voltage_measured.emit(avg_voltage, std_err)
+
                         print(f" {avg_voltage:.4f} +- {std_err:.4f} V measured across relay {relay+1}")
                         data.append({'DAC Value': i, 'Voltage Step [V]': i*voltage_per_unit, 'Relay': relay+1, 'Measured Voltage [V]': avg_voltage, 'Voltage Error [V]': std_err})
                     else:
@@ -152,15 +173,18 @@ class TestingProcess():
                     
                     
                     
-                    time.sleep(5)
-                
+                    #time.sleep(5)
+                    for i in range(50):
+                        if not self.is_running:
+                            break
+                        time.sleep(0.1)
             
             #response = input("Type y to continue to next stage, anything else to quit:  ").strip().lower()
             #if response != 'y':
                 #print("Stopping test.")
                 #break
             
-            
+            self.test_complete.emit()
         self.serial_file.close()    
 
 

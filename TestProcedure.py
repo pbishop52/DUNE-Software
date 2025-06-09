@@ -100,7 +100,7 @@ class TestingProcess():
             print(f"Setting HV to DAC value: {i} ~ {i * voltage_per_unit:.2f} V")
             
             write_order(self.serial_file, Order.HV_SET,i)
-            time.sleep(2)
+            time.sleep(25)
             
             bytes_array = bytearray(self.serial_file.read(1))
             if not bytes_array:
@@ -128,7 +128,7 @@ class TestingProcess():
                     
                     
                     
-                    time.sleep(5)
+                    time.sleep(15)
                 
             
             response = input("Type y to continue to next stage, anything else to quit:  ").strip().lower()

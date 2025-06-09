@@ -23,7 +23,7 @@ class RelayTab(QWidget):
 
         self.relay_buttons = []
         for i in range(8):  # Assuming 8 relays
-            relay_button = QPushButton(f"Relay {i +1}")
+            relay_button = QPushButton(f"Relay {i+1}")
             relay_button.setStyleSheet("background-color: gray;")
             self.relay_grid.addWidget(relay_button, i // 4, i % 4)
             self.relay_buttons.append(relay_button)
@@ -34,40 +34,6 @@ class RelayTab(QWidget):
         for i, button in enumerate(self.relay_buttons):
             button.setStyleSheet("background-color: green;" if i == active_relay else "background-color: gray;")
 
-class TestingThread(QThread):
-    relay_updated = pyqtSignal(int)
-    voltage_stage_prompt = pyqtSignal(float)
-    voltage_stage_complete = pyqtSignal()
-    voltage_measured = pyqtSignal(float, float)
-    test_complete = pyqtSignal()
-
-    def __init__(self,arduino_port, dmm_port, file_path):
-        super().__init__()
-        self.waiting_for_user = False
-        self.testing_process = TestingProcess(arduino_port, dmm_port, file_path)
-        self.is_running = True
-
-    def run(self):
-        self.testing_process.standardTest()
-        #self.testing_process.set_high_voltage(voltage_stage) 
-        for relay in range(8):
-            if not self.is_running:
-                return
-
-            self.relay_updated.emit(relay)
-            avg_voltage, std_err = self.testing_process.communicate_with_DMM()
-            self.voltage_measured.emit(avg_voltage, std_err)
-
-        self.voltage_stage_complete.emit()
-            
-        self.test_complete.emit()
-
-    def stop(self):
-        self.is_running = False
-        
-    def resume(self):
-        self.waiting_for_user = False
-        
 
 class MainWindow(QWidget):
     def __init__(self):
@@ -137,6 +103,7 @@ class MainWindow(QWidget):
 
         self.testing_thread = None
         self.testing_process = None
+        
     def update_plot(self):
         """ Updates the plot at regular intervals. """
         if self.is_testing and self.plot_data:
@@ -177,12 +144,19 @@ class MainWindow(QWidget):
         self.is_testing = True
         self.plot_data = []
 
-        self.testing_thread = TestingThread(arduino_port, dmm_port, file_path)
-        self.testing_process = self.testing_thread.testing_process
-        self.testing_thread.relay_updated.connect(self.relay_tab.update_relay_status)
+        self.testing_thread = QThread()
+        self.testing_process = TestingProcess(arduino_port, dmm_port, file_path)
+        self.testing_process.moveToThread(self.testing_thread)
 
-        self.testing_thread.voltage_measured.connect(self.update_voltage_plot)
-        self.testing_thread.test_complete.connect(self.on_test_complete)
+        self.testing_thread.started.connect(self.testing_process.standardTest)
+        self.testing_process.relay_updated.connect(self.relay_tab.update_relay_status)
+        self.testing_process.voltage_measured.connect(self.update_voltage_plot)
+        self.testing_process.test_complete.connect(self.on_test_complete)
+        
+        self.testing_process.test_complete.connect(self.testing_thread.quit)
+        self.testing_thread.finished.connect(self.testing_process.deleteLater)
+        self.testing_thread.finished.connect(self.testing_thread.deleteLater)
+        
 
         self.testing_thread.start()
         self.timer.start(1000)
@@ -191,11 +165,8 @@ class MainWindow(QWidget):
         print("Stopping test")
         self.is_testing = False
         self.timer.stop()
-        if self.testing_thread:
-            self.testing_thread.waiting_for_user = False
-            self.testing_thread.stop()
-            self.testing_thread.quit()
-            self.testing_thread.wait()
+        if self.testing_process:
+            self.testing_process.stop()
 
     def on_test_complete(self):
         """Automatically called when testing finishes."""

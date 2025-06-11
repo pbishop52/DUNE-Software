@@ -60,6 +60,45 @@ class MainWindow(QWidget):
         self.refresh_button.clicked.connect(self.refresh_ports)
         usb_layout.addWidget(self.refresh_button)
         main_layout.addLayout(usb_layout)
+        
+        # Live voltage, current and resistance tracking
+        
+        #Voltage Display
+        self.voltage_display = QLabel("Latest Measured Voltage: --- V")
+        self.voltage_display.setAlignment(Qt.AlignCenter)
+        #Current Display
+        self.current_display = QLabel("Current: --- nA")
+        self.current_display.setAlignment(Qt.AlignCenter)
+        #Resistance Display
+        self.resistance_display = QLabel("Resistance: --- Mohms")
+        self.resistance_display.setAlignment(Qt.AlignCenter)
+        #Light Display
+        #self.light_indicator = QFrame()
+        #self.light_indicator.setFixedSize(30,30)
+        #self.light_indicator.setStyleSheet("background-color: grey; border-radius: 15px;")
+        self.red_light = QLabel()
+        self.yellow_light = QLabel()
+        self.green_light = QLabel()
+        for light in [self.red_light, self.yellow_light, self.green_light]:
+            light.setFixedSize(30,30)
+            light.setStyleSheet("background-color: grey; border-radius: 15px;")
+            
+        self.light_layout = QHBoxLayout()
+        self.light_layout.addWidget(self.red_light)
+        self.light_layout.addWidget(self.yellow_light)
+        self.light_layout.addWidget(self.green_light)
+        
+        
+        #Vertical Layout
+        self.info_layout = QVBoxLayout()
+        self.info_layout.addWidget(self.voltage_display)
+        self.info_layout.addWidget(self.current_display)
+        self.info_layout.addWidget(self.resistance_display)
+        self.info_layout.addLayout(self.light_layout)
+        main_layout.addLayout(self.info_layout)
+        
+        
+        
 
         # Relay Status Tab
         self.tabs = QTabWidget()
@@ -151,6 +190,7 @@ class MainWindow(QWidget):
         self.testing_thread.started.connect(self.testing_process.standardTest)
         self.testing_process.relay_updated.connect(self.relay_tab.update_relay_status)
         self.testing_process.voltage_measured.connect(self.update_voltage_plot)
+        self.testing_process.voltage_measured.connect(self.update_live_display)
         self.testing_process.test_complete.connect(self.on_test_complete)
         
         self.testing_process.test_complete.connect(self.testing_thread.quit)
@@ -185,8 +225,47 @@ class MainWindow(QWidget):
         #results = self.testing_process.get_final_resistances()
 
 
-
-    def update_voltage_plot(self, avg_voltage, std_err):
+    def update_live_display(self,avg_voltage, std_err, input_HV):
+        R_pickoff = 1470000  #1.47 Mohms pickoff
+        
+        current = avg_voltage/R_pickoff
+        resistance = (input_HV - avg_voltage)/current if current != 0 else float('inf')
+        
+        resistance_M = resistance/1e6
+        current_nA = current *1e9
+        
+        #update displays
+        self.voltage_display.setText(f"Voltage: {avg_voltage:.3f} V")
+        self.current_display.setText(f"current: {current_nA:.2f} nA")
+        self.resistance_display.setText(f"current: {resistance_M:.2f} Mohms")
+        
+        # Light logic
+        target = 5000 #Mohms
+        sigma = 500 #Mohms
+        deviation = abs(resistance_M - target)
+        
+        if deviation <= sigma:
+            self.set_light_color("green")
+        elif deviation <= 2*sigma:
+            self.set_light_color("yellow")
+        else:
+            self.set_light_color("red")
+        
+    def set_light_color(self, color):
+        #reset all lights to off/grey
+        
+        self.red_light.setStyleSheet("background-color: grey; border-radius: 10px;")
+        self.yellow_light.setStyleSheet("background-color: grey; border-radius: 10px;")
+        self.green_light.setStyleSheet("background-color: grey; border-radius: 10px;")
+  
+        if color == "green":
+            self.green_light.setStyleSheet("background-color: green; border-radius: 10px;")
+        elif color == "yellow":
+            self.yellow_light.setStyleSheet("background-color: yellow; border-radius: 10px;")
+        else:
+            self.red_light.setStyleSheet("background-color: red; border-radius: 10px;")
+    
+    def update_voltage_plot(self, avg_voltage, std_err, input_HV):
         if self.is_testing:
             self.plot_data.append((len(self.plot_data), avg_voltage))
             x, y = zip(*self.plot_data)

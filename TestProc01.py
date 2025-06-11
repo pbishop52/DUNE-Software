@@ -36,7 +36,7 @@ def bin_resistance(value):
 
 class TestingProcess(QObject):
     relay_updated = pyqtSignal(int)
-    voltage_measured = pyqtSignal(float, float)
+    voltage_measured = pyqtSignal(float, float, float)
     test_complete = pyqtSignal()
 
     def __init__(self, arduino_port, dmm_port, file_path=None):
@@ -83,6 +83,8 @@ class TestingProcess(QObject):
             print(f"Connected to DMM on {dmm_port}")
         except Exception as e:
             raise RuntimeError(f"failed to connect to dmm on {dmm_port}")
+            
+            
     def read_DMM(self):
         """
         Reads voltage from the Siglent SDM3055 digital multimeter via USB.
@@ -117,6 +119,22 @@ class TestingProcess(QObject):
         print("TestingProcess: Stopping Test.")
         self.is_running = False
         
+        try:
+            print("Setting HV to 0")
+            write_order(self.serial_file, Order.HV_SET,0)
+            time.sleep(2)
+            self.serial_file.read(1)
+            
+            print("opening all relays")
+            for relay in range(8):
+                write_order(self.serial_file, Order.RELAY, relay)
+                time.sleep(0.1)
+                self.serial_file.real(1)
+                
+        except Exception as e:
+            print("Error during stop cleanup: {e}")
+            
+        
         
     def standardTest(self):
         step_size = 13 #DAC units for ~100V step
@@ -129,6 +147,7 @@ class TestingProcess(QObject):
         
         print(f"Step size = {step_size}, approx 100V step size")
         for i in range(low_index,upper_index,step_size):
+            input_HV = i*voltage_per_unit
             if not self.is_running:
                 break
                 
@@ -146,6 +165,7 @@ class TestingProcess(QObject):
                 print(f"Arduino communicating")
             
             for relay in range(num_relays):
+                
                 if not self.is_running:
                     break
                   
@@ -164,7 +184,7 @@ class TestingProcess(QObject):
                     
                     if avg_voltage is not None:
                         #self.relay_updated.emit(relay)
-                        self.voltage_measured.emit(avg_voltage, std_err)
+                        self.voltage_measured.emit(avg_voltage, std_err, input_HV)
 
                         print(f" {avg_voltage:.4f} +- {std_err:.4f} V measured across relay {relay+1}")
                         data.append({'DAC Value': i, 'Voltage Step [V]': i*voltage_per_unit, 'Relay': relay+1, 'Measured Voltage [V]': avg_voltage, 'Voltage Error [V]': std_err})
@@ -173,11 +193,7 @@ class TestingProcess(QObject):
                     
                     
                     
-                    #time.sleep(5)
-                    for i in range(50):
-                        if not self.is_running:
-                            break
-                        time.sleep(0.1)
+                    time.sleep(5)
             
             #response = input("Type y to continue to next stage, anything else to quit:  ").strip().lower()
             #if response != 'y':

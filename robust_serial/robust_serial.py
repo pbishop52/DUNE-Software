@@ -21,6 +21,7 @@ class Order(Enum):
     PAUSE_TEST = 10
     DATA_UPDATE = 11
     HV_UPDATED = 12
+    OPEN_RELAYS = 13
 
 def read_order(f: BinaryIO) -> Order:
     """

@@ -127,7 +127,7 @@ class TestingProcess(QObject):
             
             print("opening all relays")
             for relay in range(8):
-                write_order(self.serial_file, Order.RELAY, relay)
+                write_order(self.serial_file, Order.OPEN_RELAYS)
                 time.sleep(0.1)
                 self.serial_file.real(1)
                 
@@ -148,12 +148,13 @@ class TestingProcess(QObject):
         print(f"Step size = {step_size}, approx 100V step size")
         for i in range(low_index,upper_index,step_size):
             input_HV = i*voltage_per_unit
+            
+            
             if not self.is_running:
                 break
                 
                 
-            print(f"Setting HV to DAC value: {i} ~ {i * voltage_per_unit:.2f} V")
-            
+            print(f"Setting HV to DAC value: {i} ~ {input_HV:.2f} V")
             write_order(self.serial_file, Order.HV_SET,i)
             time.sleep(2)
             self.serial_file.read(1)
@@ -169,7 +170,7 @@ class TestingProcess(QObject):
                 if not self.is_running:
                     break
                   
-                print(f"Activating relay {relay+1} at {i * voltage_per_unit:.2f} V")
+                print(f"Activating relay {relay+1} at {input_HV:.2f} V")
                 write_order(self.serial_file, Order.RELAY, relay)
                 self.relay_updated.emit(relay)
                 self.serial_file.read(1)
@@ -201,7 +202,8 @@ class TestingProcess(QObject):
                 #break
             
             self.test_complete.emit()
-        self.serial_file.close()    
+        self.serial_file.close()
+        self.stop()
 
 
 if __name__ == "__main__":

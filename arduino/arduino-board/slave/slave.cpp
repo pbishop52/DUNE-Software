@@ -77,6 +77,15 @@ void loop() {
             write_order(READY_RELAY);
             break;
           }
+        case OPEN_RELAYS:
+          {
+            int relay_curent = read_i8();
+            for (int i=0; i<8; i++){
+              digitalWrite(RELAY_CHANNEL[i], HIGH);
+            }
+            write_order(READY_RELAY);
+            break;
+          }
         case HV_SET:
           {
             int hv_current = read_i8();

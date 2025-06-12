@@ -236,8 +236,8 @@ class MainWindow(QWidget):
         
         #update displays
         self.voltage_display.setText(f"Voltage: {avg_voltage:.3f} V")
-        self.current_display.setText(f"current: {current_nA:.2f} nA")
-        self.resistance_display.setText(f"current: {resistance_M:.2f} Mohms")
+        self.current_display.setText(f"Current: {current_nA:.2f} nA")
+        self.resistance_display.setText(f"Resistance: {resistance_M:.2f} Mohms")
         
         # Light logic
         target = 5000 #Mohms

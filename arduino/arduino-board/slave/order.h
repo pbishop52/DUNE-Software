@@ -15,7 +15,9 @@ enum Order {
   START_TEST=9,
   PAUSE_TEST=10,
   DATA_UPDATE=11,
-  HV_UPDATED=12
+  HV_UPDATED=12,
+  OPEN_RELAYS=13
+
 };
 
 typedef enum Order Order;

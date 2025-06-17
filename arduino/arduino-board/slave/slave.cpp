@@ -70,9 +70,9 @@ void loop() {
             
             int relay_current = read_i8();
             for (int i = 0; i < 8; i++) {
-              digitalWrite(RELAY_CHANNEL[i],HIGH);
+              digitalWrite(RELAY_CHANNEL[i],LOW);
             }
-            digitalWrite(RELAY_CHANNEL[relay_current], LOW);
+            digitalWrite(RELAY_CHANNEL[relay_current], HIGH);
             Serial.println("Sending READY_RELAY");
             write_order(READY_RELAY);
             break;
@@ -81,7 +81,7 @@ void loop() {
           {
             int relay_curent = read_i8();
             for (int i=0; i<8; i++){
-              digitalWrite(RELAY_CHANNEL[i], HIGH);
+              digitalWrite(RELAY_CHANNEL[i], LOW);
             }
             write_order(READY_RELAY);
             break;

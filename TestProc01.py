@@ -110,7 +110,7 @@ class TestingProcess(QObject):
         
         if len(readings) > 0:
             avg_voltage = np.mean(readings)
-            std_err = np.std(readings, ddof=1) / np.sqrt(len(readings))  # Standard Error
+            std_err = np.std(readings)
             return avg_voltage, std_err
         else:
             return None, None
@@ -129,10 +129,12 @@ class TestingProcess(QObject):
             for relay in range(8):
                 write_order(self.serial_file, Order.OPEN_RELAYS)
                 time.sleep(0.1)
-                self.serial_file.real(1)
+                self.serial_file.read(1)
                 
         except Exception as e:
             print("Error during stop cleanup: {e}")
+        
+        self.test_complete.emit()
             
         
         
@@ -151,7 +153,9 @@ class TestingProcess(QObject):
             
             
             if not self.is_running:
-                break
+                self.stop()
+                return
+                #break
                 
                 
             print(f"Setting HV to DAC value: {i} ~ {input_HV:.2f} V")
@@ -168,7 +172,9 @@ class TestingProcess(QObject):
             for relay in range(num_relays):
                 
                 if not self.is_running:
-                    break
+                    self.stop()
+                    return
+                    #break
                   
                 print(f"Activating relay {relay+1} at {input_HV:.2f} V")
                 write_order(self.serial_file, Order.RELAY, relay)
@@ -200,8 +206,14 @@ class TestingProcess(QObject):
             #if response != 'y':
                 #print("Stopping test.")
                 #break
-            
-            self.test_complete.emit()
+            if self.file_path and data:
+                fieldnames = data[0].keys()
+                with open(self.file_path, mode='w', newline='') as csvfile:
+                    writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+                    writer.writeheader()
+                    writer.writerows(data)
+                    
+        self.test_complete.emit()
         self.serial_file.close()
         self.stop()
 

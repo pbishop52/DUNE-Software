@@ -115,8 +115,6 @@ class MainWindow(QWidget):
 
         self.plot_data = []
         self.plot_curve = self.plot_widget.plot()
-        self.timer = QTimer()
-        self.timer.timeout.connect(self.update_plot)
         self.is_testing = False
 
         # Start/Stop Buttons
@@ -199,19 +197,17 @@ class MainWindow(QWidget):
         
 
         self.testing_thread.start()
-        self.timer.start(1000)
+        self.start_time = time.time()
 
     def stop_test(self):
         print("Stopping test")
         self.is_testing = False
-        self.timer.stop()
         if self.testing_process:
             self.testing_process.stop()
 
     def on_test_complete(self):
         """Automatically called when testing finishes."""
         self.is_testing = False
-        self.timer.stop()
 
         # Save the voltage vs time plot
         timestamp = time.strftime("%Y%m%d_%H%M%S")
@@ -266,8 +262,9 @@ class MainWindow(QWidget):
             self.red_light.setStyleSheet("background-color: red; border-radius: 10px;")
     
     def update_voltage_plot(self, avg_voltage, std_err, input_HV):
+        timestamp = time.time()-self.start_time
         if self.is_testing:
-            self.plot_data.append((len(self.plot_data), avg_voltage))
+            self.plot_data.append((timestamp, avg_voltage))
             x, y = zip(*self.plot_data)
             self.plot_curve.setData(x, y)
             

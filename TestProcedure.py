@@ -80,7 +80,7 @@ class TestingProcess():
         
         if len(readings) > 0:
             avg_voltage = np.mean(readings)
-            std_err = np.std(readings, ddof=1) / np.sqrt(len(readings))  # Standard Error
+            std_err = np.std(readings) 
             return avg_voltage, std_err
         else:
             return None, None
@@ -88,7 +88,7 @@ class TestingProcess():
        
     def standardTest(self):
         step_size = 13 #DAC units for ~100V step
-        low_index = 0
+        low_index = 0+13
         upper_index = 256
         voltage_per_unit = 7.843 # = 2000/255
         num_relays = 8
@@ -100,7 +100,7 @@ class TestingProcess():
             print(f"Setting HV to DAC value: {i} ~ {i * voltage_per_unit:.2f} V")
             
             write_order(self.serial_file, Order.HV_SET,i)
-            time.sleep(25)
+            time.sleep(20)
             
             bytes_array = bytearray(self.serial_file.read(1))
             if not bytes_array:
@@ -111,7 +111,7 @@ class TestingProcess():
             for relay in range(num_relays):
                 print(f"Activating relay {relay+1} at {i * voltage_per_unit:.2f} V")
                 write_order(self.serial_file, Order.RELAY, relay)
-                
+                time.sleep(10)
                 relay_array = bytearray(self.serial_file.read(1))
                 if not relay_array:
                     print("No RELAY order received")
@@ -123,13 +123,17 @@ class TestingProcess():
                     if avg_voltage is not None:
                         print(f" {avg_voltage:.4f} +- {std_err:.4f} V measured across relay {relay+1}")
                         data.append({'DAC Value': i, 'Voltage Step [V]': i*voltage_per_unit, 'Relay': relay+1, 'Measured Voltage [V]': avg_voltage, 'Voltage Error [V]': std_err})
+                        
                     else:
                         print(f"Failed to get DMM reading for relay {relay +1}")
                     
                     
-                    
-                    time.sleep(15)
                 
+                    time.sleep(10)
+                #response1 = input("Type y to continue to next relay, anything else to quit:  ").strip().lower()
+                #if response1 != 'y':
+                    #print("Stopping test.")
+                    #break
             
             response = input("Type y to continue to next stage, anything else to quit:  ").strip().lower()
             if response != 'y':

@@ -48,6 +48,8 @@ class TestingProcess(QObject):
         self.dmm_port = dmm_port
         self.file_path = file_path
         self.is_running = True
+        self.data = []
+        self.test_info = {}
         
 
         # Initialize Arduino connection
@@ -84,7 +86,27 @@ class TestingProcess(QObject):
         except Exception as e:
             raise RuntimeError(f"failed to connect to dmm on {dmm_port}")
             
+    def set_test_info(self, info_dict):
+        self.test_info = info_dict
+        
+    def csv_header_save(self, data_list, filename):
+        with open(filename, 'w', newline='') as csvfile:
+            writer = csv.writer(csvfile)
             
+            for key, value in self.test_info.items():
+                writer.writerow([f"{key}: {value}"])
+                
+                writer.writerow([])
+                
+                fieldnames = data_list[0].keys()
+                writer.writerow(fieldnames)
+                
+                for row in data_list:
+                    writer.writerow([row[field] for field in fieldnames])
+                    
+    
+    
+    
     def read_DMM(self):
         """
         Reads voltage from the Siglent SDM3055 digital multimeter via USB.
@@ -144,7 +166,7 @@ class TestingProcess(QObject):
         upper_index = 256
         voltage_per_unit = 7.843 # = 2000/255
         num_relays = 8
-        data = []
+        #data = []
         
         
         print(f"Step size = {step_size}, approx 100V step size")
@@ -194,7 +216,7 @@ class TestingProcess(QObject):
                         self.voltage_measured.emit(avg_voltage, std_err, input_HV)
 
                         print(f" {avg_voltage:.4f} +- {std_err:.4f} V measured across relay {relay+1}")
-                        data.append({'DAC Value': i, 'Voltage Step [V]': i*voltage_per_unit, 'Relay': relay+1, 'Measured Voltage [V]': avg_voltage, 'Voltage Error [V]': std_err})
+                        self.data.append({'DAC Value': i, 'Voltage Step [V]': i*voltage_per_unit, 'Relay': relay+1, 'Measured Voltage [V]': avg_voltage, 'Voltage Error [V]': std_err})
                     else:
                         print(f"Failed to get DMM reading for relay {relay +1}")
                     

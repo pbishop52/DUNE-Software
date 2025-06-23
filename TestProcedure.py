@@ -100,7 +100,7 @@ class TestingProcess():
             print(f"Setting HV to DAC value: {i} ~ {i * voltage_per_unit:.2f} V")
             
             write_order(self.serial_file, Order.HV_SET,i)
-            time.sleep(20)
+            time.sleep(10)
             
             bytes_array = bytearray(self.serial_file.read(1))
             if not bytes_array:
@@ -111,7 +111,7 @@ class TestingProcess():
             for relay in range(num_relays):
                 print(f"Activating relay {relay+1} at {i * voltage_per_unit:.2f} V")
                 write_order(self.serial_file, Order.RELAY, relay)
-                time.sleep(10)
+                time.sleep(5)
                 relay_array = bytearray(self.serial_file.read(1))
                 if not relay_array:
                     print("No RELAY order received")
@@ -121,7 +121,7 @@ class TestingProcess():
                     avg_voltage, std_err = self.communicate_with_DMM()
                     
                     if avg_voltage is not None:
-                        print(f" {avg_voltage:.4f} +- {std_err:.4f} V measured across relay {relay+1}")
+                        print(f" {avg_voltage:.4f} +- {std_err:.4f} V measured across channel {relay+1}")
                         data.append({'DAC Value': i, 'Voltage Step [V]': i*voltage_per_unit, 'Relay': relay+1, 'Measured Voltage [V]': avg_voltage, 'Voltage Error [V]': std_err})
                         
                     else:
@@ -129,16 +129,16 @@ class TestingProcess():
                     
                     
                 
-                    time.sleep(10)
+                    time.sleep(5)
                 #response1 = input("Type y to continue to next relay, anything else to quit:  ").strip().lower()
                 #if response1 != 'y':
                     #print("Stopping test.")
                     #break
             
-            response = input("Type y to continue to next stage, anything else to quit:  ").strip().lower()
-            if response != 'y':
-                print("Stopping test.")
-                break
+            #response = input("Type y to continue to next stage, anything else to quit:  ").strip().lower()
+            #if response != 'y':
+                #print("Stopping test.")
+                #break
             
             
         self.serial_file.close()    

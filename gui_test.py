@@ -7,12 +7,13 @@ import serial.tools.list_ports
 import pyqtgraph as pg
 from PyQt5.QtWidgets import (
     QApplication, QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QTabWidget,
-    QGridLayout, QComboBox, QFileDialog, QTextEdit, QMessageBox
+    QGridLayout, QComboBox, QFileDialog, QTextEdit, QMessageBox, QDialog
 )
 from PyQt5.QtCore import QTimer, QThread, pyqtSignal, Qt
 from PyQt5.QtGui import QPixmap, QPainter
 from TestProc01 import TestingProcess
 from pyqtgraph.exporters import ImageExporter
+from PreTestPopup import TestDialog
 
 class RelayTab(QWidget):
     def __init__(self):
@@ -165,6 +166,12 @@ class MainWindow(QWidget):
             self.file_path_display.setText(file_path)
 
     def start_test(self):
+        dialog = TestDialog()
+        if dialog.exec_() == QDialog.Accepted:
+            test_info = dialog.input_vals()
+            self.testing_process.set_test_info(test_info)
+            self.testing_process.standardTest()
+            
         arduino_port = self.arduino_port_dropdown.currentText()
         dmm_port = self.dmm_port_dropdown.currentText()
         file_path = self.file_path_display.toPlainText().strip()
@@ -194,10 +201,10 @@ class MainWindow(QWidget):
         self.testing_process.test_complete.connect(self.testing_thread.quit)
         self.testing_thread.finished.connect(self.testing_process.deleteLater)
         self.testing_thread.finished.connect(self.testing_thread.deleteLater)
-        
 
         self.testing_thread.start()
         self.start_time = time.time()
+        
 
     def stop_test(self):
         print("Stopping test")

@@ -86,8 +86,30 @@ class TestingProcess(QObject):
         except Exception as e:
             raise RuntimeError(f"failed to connect to dmm on {dmm_port}")
             
+       
     def set_test_info(self, info_dict):
-        self.test_info = info_dict
+        self.test_info = info_dict  
+       
+    def save_data_csv(self):
+        if self.file_path and self.data
+            try:
+                with open(self.file_path, 'w', newline = '') as csvfile:
+                    writer =csv.writer(csvfile)
+                    
+                    writer.writerow(["ID:", f"{self.test_info['Stand Number']}_{self.test_info['Dunk Board']}_{self,timestamp}", "User:", self.test_info['Tester Name']])
+                    
+                    writer.writerow(["Calibration Channel (-1 if not calib):", self.test_info['Calib Channel'], "Calibration Value (GOhm):",self.test_info['Calib Value']])
+                    
+                    writer.writerow(['HV Index', 'CHANNEL', 'Voltage','Error'])
+                    
+                    for row in self.data:
+                        writer.writerow([row['DAC Value'],row['Relay'],row['Measured Voltage [V]'], row['Voltage Error [V]'])
+                    print(f"Data saved successfully to {self.file_path}")
+                except Exception as e:
+                    print(f"Error saving CSV: {e}")
+                    
+                    
+            
         
     def csv_header_save(self, data_list, filename):
         with open(filename, 'w', newline='') as csvfile:
@@ -104,8 +126,6 @@ class TestingProcess(QObject):
                 for row in data_list:
                     writer.writerow([row[field] for field in fieldnames])
                     
-    
-    
     
     def read_DMM(self):
         """
@@ -228,7 +248,7 @@ class TestingProcess(QObject):
             #if response != 'y':
                 #print("Stopping test.")
                 #break
-            if self.file_path and data:
+            if self.file_path and self.data:
                 fieldnames = data[0].keys()
                 with open(self.file_path, mode='w', newline='') as csvfile:
                     writer = csv.DictWriter(csvfile, fieldnames=fieldnames)

@@ -169,8 +169,9 @@ class MainWindow(QWidget):
         dialog = TestDialog()
         if dialog.exec_() == QDialog.Accepted:
             test_info = dialog.input_vals()
-            self.testing_process.set_test_info(test_info)
-            self.testing_process.standardTest()
+        else:
+            print("Test canceled by user")
+            return
             
         arduino_port = self.arduino_port_dropdown.currentText()
         dmm_port = self.dmm_port_dropdown.currentText()
@@ -191,6 +192,8 @@ class MainWindow(QWidget):
         self.testing_thread = QThread()
         self.testing_process = TestingProcess(arduino_port, dmm_port, file_path)
         self.testing_process.moveToThread(self.testing_thread)
+        
+        self.testing_process.set_test_info(test_info)
 
         self.testing_thread.started.connect(self.testing_process.standardTest)
         self.testing_process.relay_updated.connect(self.relay_tab.update_relay_status)

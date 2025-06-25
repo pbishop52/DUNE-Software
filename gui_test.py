@@ -161,9 +161,9 @@ class MainWindow(QWidget):
             self.dmm_port_dropdown.addItems(visa_resources)
 
     def select_file(self):
-        file_path, _ = QFileDialog.getSaveFileName(self, "Select File", "", "CSV Files (*.csv)")
-        if file_path:
-            self.file_path_display.setText(file_path)
+        folder_path, _ = QFileDialog.getExistingDirectory(self, "Select folder to save CSV")
+        if folder_path:
+            self.file_path_display.setText(folder_path)
 
     def start_test(self):
         dialog = TestDialog()
@@ -189,11 +189,16 @@ class MainWindow(QWidget):
         self.is_testing = True
         self.plot_data = []
 
-        self.testing_thread = QThread()
+       
         self.testing_process = TestingProcess(arduino_port, dmm_port, file_path)
-        self.testing_process.moveToThread(self.testing_thread)
         
         self.testing_process.set_test_info(test_info)
+        
+        folder_path = self.file_path_display.toPlainText().strip()
+        self.testing_process.build_csv_path(folder_path)
+        
+        self.testing_thread = QThread()
+        self.testing_process.moveToThread(self.testing_thread)
 
         self.testing_thread.started.connect(self.testing_process.standardTest)
         self.testing_process.relay_updated.connect(self.relay_tab.update_relay_status)

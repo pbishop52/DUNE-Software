@@ -88,7 +88,7 @@ class TestingProcess():
        
     def standardTest(self):
         step_size = 13 #DAC units for ~100V step
-        low_index = 0+13
+        low_index = 0
         upper_index = 256
         voltage_per_unit = 7.843 # = 2000/255
         num_relays = 8
@@ -121,7 +121,7 @@ class TestingProcess():
                     avg_voltage, std_err = self.communicate_with_DMM()
                     
                     if avg_voltage is not None:
-                        print(f" {avg_voltage:.4f} +- {std_err:.4f} V measured across channel {relay+1}")
+                        print(f" {avg_voltage:.6f} +- {std_err:.6f} V measured across channel {relay+1}")
                         data.append({'DAC Value': i, 'Voltage Step [V]': i*voltage_per_unit, 'Relay': relay+1, 'Measured Voltage [V]': avg_voltage, 'Voltage Error [V]': std_err})
                         
                     else:

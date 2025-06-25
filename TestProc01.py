@@ -89,21 +89,28 @@ class TestingProcess(QObject):
        
     def set_test_info(self, info_dict):
         self.test_info = info_dict  
+        self.timestamp = int(time.time())
+        
+    def build_csv_path(self, folder_path):
+        if hasattr(self, 'test_info') and hasattr(self, 'timestamp'):
+            filename = f"WM_Comp_test_{self.test_info['Stand Number']}_{self.test_info['Dunk Board']}_{self.timestamp}.csv"
+            self.file_path = os,path.join(folder_path, filename)
+            
        
     def save_data_csv(self):
-        if self.file_path and self.data
+        if self.file_path and self.data:
             try:
                 with open(self.file_path, 'w', newline = '') as csvfile:
                     writer =csv.writer(csvfile)
                     
-                    writer.writerow(["ID:", f"{self.test_info['Stand Number']}_{self.test_info['Dunk Board']}_{self,timestamp}", "User:", self.test_info['Tester Name']])
+                    writer.writerow(["ID:", f"{self.test_info['Stand Number']}_{self.test_info['Dunk Board']}_{self.timestamp}", "User:", self.test_info['Tester Name']])
                     
                     writer.writerow(["Calibration Channel (-1 if not calib):", self.test_info['Calib Channel'], "Calibration Value (GOhm):",self.test_info['Calib Value']])
                     
                     writer.writerow(['HV Index', 'CHANNEL', 'Voltage','Error'])
                     
                     for row in self.data:
-                        writer.writerow([row['DAC Value'],row['Relay'],row['Measured Voltage [V]'], row['Voltage Error [V]'])
+                        writer.writerow([row['DAC Value'],row['Relay'],row['Measured Voltage [V]'], row['Voltage Error [V]']])
                     print(f"Data saved successfully to {self.file_path}")
                 except Exception as e:
                     print(f"Error saving CSV: {e}")

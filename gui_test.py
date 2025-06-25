@@ -161,7 +161,7 @@ class MainWindow(QWidget):
             self.dmm_port_dropdown.addItems(visa_resources)
 
     def select_file(self):
-        folder_path, _ = QFileDialog.getExistingDirectory(self, "Select folder to save CSV")
+        folder_path = QFileDialog.getExistingDirectory(self, "Select folder to save CSV")
         if folder_path:
             self.file_path_display.setText(folder_path)
 

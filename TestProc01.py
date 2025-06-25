@@ -1,4 +1,5 @@
 import time
+import os
 import csv
 import numpy as np
 import pyvisa
@@ -94,7 +95,7 @@ class TestingProcess(QObject):
     def build_csv_path(self, folder_path):
         if hasattr(self, 'test_info') and hasattr(self, 'timestamp'):
             filename = f"WM_Comp_test_{self.test_info['Stand Number']}_{self.test_info['Dunk Board']}_{self.timestamp}.csv"
-            self.file_path = os,path.join(folder_path, filename)
+            self.file_path = os.path.join(folder_path, filename)
             
        
     def save_data_csv(self):
@@ -112,26 +113,11 @@ class TestingProcess(QObject):
                     for row in self.data:
                         writer.writerow([row['DAC Value'],row['Relay'],row['Measured Voltage [V]'], row['Voltage Error [V]']])
                     print(f"Data saved successfully to {self.file_path}")
-                except Exception as e:
-                    print(f"Error saving CSV: {e}")
+            except Exception as e:
+                print(f"Error saving CSV: {e}")
                     
                     
             
-        
-    def csv_header_save(self, data_list, filename):
-        with open(filename, 'w', newline='') as csvfile:
-            writer = csv.writer(csvfile)
-            
-            for key, value in self.test_info.items():
-                writer.writerow([f"{key}: {value}"])
-                
-                writer.writerow([])
-                
-                fieldnames = data_list[0].keys()
-                writer.writerow(fieldnames)
-                
-                for row in data_list:
-                    writer.writerow([row[field] for field in fieldnames])
                     
     
     def read_DMM(self):
@@ -152,6 +138,11 @@ class TestingProcess(QObject):
         """
         readings = []
         for _ in range(10):
+            if not self.is_running:
+                print("Test cancelled during DMM read.")
+                return None, None
+                
+                
             voltage = self.read_DMM()
             if voltage is not None:
                 readings.append(voltage)
@@ -182,6 +173,11 @@ class TestingProcess(QObject):
                 
         except Exception as e:
             print("Error during stop cleanup: {e}")
+        
+        if self.data:
+            self.save_data_csv()
+        if hasattr(self, 'serial_file') and self.serial_file:
+            self.serial_file.close()
         
         self.test_complete.emit()
             
@@ -255,13 +251,7 @@ class TestingProcess(QObject):
             #if response != 'y':
                 #print("Stopping test.")
                 #break
-            if self.file_path and self.data:
-                fieldnames = data[0].keys()
-                with open(self.file_path, mode='w', newline='') as csvfile:
-                    writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
-                    writer.writeheader()
-                    writer.writerows(data)
-                    
+        self.save_data_csv()
         self.test_complete.emit()
         self.serial_file.close()
         self.stop()

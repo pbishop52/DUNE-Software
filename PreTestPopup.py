@@ -27,7 +27,7 @@ class TestDialog(QDialog):
         self.layout.addWidget(self.dunk_board_label)
         self.layout.addWidget(self.dunk_board_input)
         
-        self.calib_channel_label = QLabel("Calib Channel (-1 if N\A):")
+        self.calib_channel_label = QLabel("Calib Channel (-1 if none):")
         self.calib_channel_input = QLineEdit()
         self.layout.addWidget(self.calib_channel_label)
         self.layout.addWidget(self.calib_channel_input)

@@ -38,6 +38,7 @@ def bin_resistance(value):
 class TestingProcess(QObject):
     relay_updated = pyqtSignal(int)
     voltage_measured = pyqtSignal(float, float, float)
+    voltage_live = pyqtSignal(float)
     test_complete = pyqtSignal()
 
     def __init__(self, arduino_port, dmm_port, file_path=None):
@@ -130,12 +131,9 @@ class TestingProcess(QObject):
         except Exception as e:
             print(f"Error reading from DMM: {e}")
             return None  # Return None if reading fails
-
-    def communicate_with_DMM(self):
-        """
-        Polls data from the digital multimeter (DMM), averages over 10 readings,
-        and calculates standard error.
-        """
+            
+    def DMM_live_readings(self, input_HV):
+        
         readings = []
         for _ in range(10):
             if not self.is_running:
@@ -146,7 +144,17 @@ class TestingProcess(QObject):
             voltage = self.read_DMM()
             if voltage is not None:
                 readings.append(voltage)
+                self.voltage_live.emit(voltage)
             time.sleep(0.5)  # Small delay between readings
+        return readings
+            
+            
+
+    def communicate_with_DMM(self, readings):
+        """
+        Polls data from the digital multimeter (DMM), averages over 10 readings,
+        and calculates standard error.
+        """
         
         if len(readings) > 0:
             avg_voltage = np.mean(readings)
@@ -157,7 +165,8 @@ class TestingProcess(QObject):
 
     def stop(self):
         print("TestingProcess: Stopping Test.")
-        self.is_running = False
+        if not self.is_running:
+            return
         
         try:
             print("Setting HV to 0")
@@ -226,13 +235,16 @@ class TestingProcess(QObject):
                 self.relay_updated.emit(relay)
                 self.serial_file.read(1)
                 
+                
+                
                 relay_array = bytearray(self.serial_file.read(1))
                 if not relay_array:
                     print("No RELAY order received")
                 else:
                     print(f"Relay {relay +1} activated")
                     
-                    avg_voltage, std_err = self.communicate_with_DMM()
+                    readings = self.DMM_live_readings(input_HV)
+                    avg_voltage, std_err = self.communicate_with_DMM(readings)
                     
                     if avg_voltage is not None:
                         #self.relay_updated.emit(relay)

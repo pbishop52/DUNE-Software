@@ -142,11 +142,6 @@ class MainWindow(QWidget):
         self.testing_thread = None
         self.testing_process = None
         
-    def update_plot(self):
-        """ Updates the plot at regular intervals. """
-        if self.is_testing and self.plot_data:
-            x, y = zip(*self.plot_data)  # Extract data points
-            self.plot_curve.setData(x, y)
 
     def refresh_ports(self):
         serial_ports = [port.device for port in serial.tools.list_ports.comports()]
@@ -202,7 +197,7 @@ class MainWindow(QWidget):
 
         self.testing_thread.started.connect(self.testing_process.standardTest)
         self.testing_process.relay_updated.connect(self.relay_tab.update_relay_status)
-        self.testing_process.voltage_measured.connect(self.update_voltage_plot)
+        self.testing_process.voltage_live.connect(self.update_voltage_plot)
         self.testing_process.voltage_measured.connect(self.update_live_display)
         self.testing_process.test_complete.connect(self.on_test_complete)
         
@@ -276,10 +271,10 @@ class MainWindow(QWidget):
         else:
             self.red_light.setStyleSheet("background-color: red; border-radius: 10px;")
     
-    def update_voltage_plot(self, avg_voltage, std_err, input_HV):
+    def update_voltage_plot(self, voltage):
         timestamp = time.time()-self.start_time
         if self.is_testing:
-            self.plot_data.append((timestamp, avg_voltage))
+            self.plot_data.append((timestamp, voltage))
             x, y = zip(*self.plot_data)
             self.plot_curve.setData(x, y)
             

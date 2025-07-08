@@ -51,6 +51,7 @@ void loop() {
     Order order_received = read_order();
     Serial.print(">> Arduino: Received order");
     Serial.println((int)order_received);
+    Serial.flush();
 
     if (order_received == HELLO) {
       // If the cards haven't say hello, check the connection
@@ -179,6 +180,7 @@ int32_t read_i32() {
 void write_order(enum Order myOrder) {
   uint8_t* Order = (uint8_t*)&myOrder;
   Serial.write(Order, sizeof(uint8_t));
+  Serial.flush();
 }
 
 void write_i8(int8_t num) {

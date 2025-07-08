@@ -196,6 +196,7 @@ class MainWindow(QWidget):
         self.testing_process.moveToThread(self.testing_thread)
 
         self.testing_thread.started.connect(self.testing_process.standardTest)
+        #self.testing_thread.started.connect(self.testing_process.relayTest)
         self.testing_process.relay_updated.connect(self.relay_tab.update_relay_status)
         self.testing_process.voltage_live.connect(self.update_voltage_plot)
         self.testing_process.voltage_measured.connect(self.update_live_display)
@@ -222,7 +223,9 @@ class MainWindow(QWidget):
         # Save the voltage vs time plot
         timestamp = time.strftime("%Y%m%d_%H%M%S")
         filename = f"voltage_vs_time_{timestamp}.png"
-        save_path = os.path.join(os.getcwd(), filename)
+        save_dir = "/home/dunetesting/project/live_plots"
+        save_path = os.path.join(save_dir, filename)
+        
         exporter = ImageExporter(self.plot_widget.plotItem)
         exporter.export(save_path)
         print(f"Plot saved to {save_path}")

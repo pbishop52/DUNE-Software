@@ -115,7 +115,10 @@ class MainWindow(QWidget):
         main_layout.addWidget(self.plot_widget)
 
         self.plot_data = []
-        self.plot_curve = self.plot_widget.plot()
+        self.error_bars = pg.ErrorBarItem(beam=0.2)
+        self.plot_curve = self.plot_widget.plot(symbol='o', pen='k',symbolPen = 'r', symbolBrush = 'r', symbolSize=5)
+        self.plot_widget.setBackground('w')
+        self.plot_widget.addItem(self.error_bars)
         self.is_testing = False
 
         # Start/Stop Buttons
@@ -198,7 +201,7 @@ class MainWindow(QWidget):
         self.testing_thread.started.connect(self.testing_process.standardTest)
         #self.testing_thread.started.connect(self.testing_process.relayTest)
         self.testing_process.relay_updated.connect(self.relay_tab.update_relay_status)
-        self.testing_process.voltage_live.connect(self.update_voltage_plot)
+        self.testing_process.voltage_measured.connect(self.update_voltage_plot)
         self.testing_process.voltage_measured.connect(self.update_live_display)
         self.testing_process.test_complete.connect(self.on_test_complete)
         
@@ -218,7 +221,6 @@ class MainWindow(QWidget):
 
     def on_test_complete(self):
         """Automatically called when testing finishes."""
-        self.is_testing = False
 
         # Save the voltage vs time plot
         timestamp = time.strftime("%Y%m%d_%H%M%S")
@@ -229,9 +231,7 @@ class MainWindow(QWidget):
         exporter = ImageExporter(self.plot_widget.plotItem)
         exporter.export(save_path)
         print(f"Plot saved to {save_path}")
-
-        # Show results summary
-        #results = self.testing_process.get_final_resistances()
+        self.stop_test()
 
 
     def update_live_display(self,avg_voltage, std_err, input_HV):
@@ -240,7 +240,7 @@ class MainWindow(QWidget):
         current = avg_voltage/R_pickoff
         resistance = (input_HV - avg_voltage)/current if current != 0 else float('inf')
         
-        resistance_M = resistance/1e6
+        resistance_M = -resistance/1e6
         current_nA = current *1e9
         
         #update displays
@@ -274,12 +274,16 @@ class MainWindow(QWidget):
         else:
             self.red_light.setStyleSheet("background-color: red; border-radius: 10px;")
     
-    def update_voltage_plot(self, voltage):
+    def update_voltage_plot(self, voltage,std_err,input_HV):
         timestamp = time.time()-self.start_time
         if self.is_testing:
-            self.plot_data.append((timestamp, voltage))
-            x, y = zip(*self.plot_data)
+            self.plot_data.append((timestamp, voltage, std_err))
+            x, y, err = zip(*self.plot_data)
+            x=np.array(x)
+            y=np.array(y)
+            err=np.array(err)
             self.plot_curve.setData(x, y)
+            self.error_bars.setData(x=x,y=y,top=err,bottom=err)
             
 
 

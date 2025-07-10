@@ -121,9 +121,9 @@ class TestingProcess(QObject):
                     
     def initialize_dmm(self):
         try:
-            self.dmm.write("CONF:VOLT:DC")
+            self.dmm.write("CONF:VOLT:DC: 2")
             self.dmm.write("SENS:VOLT:DC:RANG 2")
-            #self.dmm.write("SYST:INP:Z 10E9")
+            self.dmm.write("SYST:INP:Z 1E10")
             #print("DMM initialized to 2V range and 10Gohm input Z")
         except Exception as e:
             print(f"Error initializing DMM {e}")
@@ -177,17 +177,6 @@ class TestingProcess(QObject):
         else:
             return None, None
             
-    def dmm_calc_stats(self):
-        self.dmm.write("SAMP:COUN 10")
-        self.dmm.write("CALC:AVER:CLE")
-        self.dmm.write("CALC:AVER:STAT ON")
-        self.dmm.write("INIT")
-        time.sleep(5)
-        response = self.dmm.query("CALC:AVER:ALL?").split(",")
-        avg_voltage = float(response[0])
-        std_dev = float(response[1])
-        return avg_voltage, std_dev
-            
             
 
     def stop(self):
@@ -237,25 +226,32 @@ class TestingProcess(QObject):
         voltage_per_unit = 7.843 # = 2000/255
         num_relays = 8
         start_time = time.time()
+        
 
+            
         print(f"Step size = {step_size}, approx 100V step size")
         self.initialize_dmm()
         for i in range(low_index,upper_index,step_size):
             input_HV = i*voltage_per_unit
             
+            
             if not self.is_running:
                 self.stop()
                 return
+                #break
               
             if time.time()-start_time > 1000:
                 self.pause_test()
                 start_time = time.time()
-    
+              
+            
+                
             print(f"Setting HV to DAC value: {i} ~ {input_HV:.2f} V")
             self.serial_file.reset_input_buffer()
             write_order(self.serial_file, Order.HV_SET,i)
-            time.sleep(10)
+            time.sleep(0.5)
             print(self.serial_file.read_until())
+            
             bytes_array = bytearray(self.serial_file.read(2))
             print(bytes_array)
             if not bytes_array:
@@ -268,20 +264,27 @@ class TestingProcess(QObject):
                 if not self.is_running:
                     self.stop()
                     return
-                    
+
+                  
                 print(f"Activating relay {relay+1} at {input_HV:.2f} V")
                 write_order(self.serial_file, Order.RELAY, relay)
+                time.sleep(0.1)
                 self.relay_updated.emit(relay)
                 self.serial_file.read(1)
+                
+                
+                
                 relay_array = bytearray(self.serial_file.read(1))
                 if not relay_array:
                     print("No RELAY order received")
                 else:
                     print(f"Relay {relay +1} activated")
-                    time.sleep(2)
-                    avg_voltage, std_err = self.dmm_calc_stats()
+                    
+                    readings = self.DMM_live_readings(input_HV)
+                    avg_voltage, std_err = self.communicate_with_DMM(readings)
                     
                     if avg_voltage is not None:
+                        #self.relay_updated.emit(relay)
                         self.voltage_measured.emit(avg_voltage, std_err, input_HV)
 
                         print(f" {avg_voltage:.4f} +- {std_err:.4f} V measured across relay {relay+1}")
@@ -291,17 +294,12 @@ class TestingProcess(QObject):
                     
                     
                     
-                    time.sleep(1)
+                    time.sleep(0.1)
             
         self.save_data_csv()
         self.test_complete.emit()
         self.serial_file.close()
         self.stop()
-        
-        
-        
-        
-        
         
     def relayTest(self):
         print("Starting single relay test")
